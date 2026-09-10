@@ -495,3 +495,19 @@ struct ScanDiagnosticsTests {
         #expect(summary.contains("lsof"))
     }
 }
+
+struct DevelopmentServicesTests {
+    @Test func decodesBootedDevicesAcrossPlatforms() throws {
+        let json = #"{"devices":{"com.apple.CoreSimulator.SimRuntime.watchOS-26-1":[{"udid":"watch","name":"Apple Watch","state":"Booted"}],"com.apple.CoreSimulator.SimRuntime.iOS-26-1":[{"udid":"phone","name":"iPhone 17 Pro","state":"Booted","isAvailable":true},{"udid":"off","name":"iPad","state":"Shutdown"}]}}"#
+        let devices = try RunningSimulator.decode(Data(json.utf8))
+        #expect(devices.count == 2)
+        #expect(devices.contains { $0.runtime == "iOS 26.1" })
+        #expect(devices.contains { $0.runtime == "watchOS 26.1" })
+    }
+
+    @Test func preservesMultipleSavedEndpoints() throws {
+        let routes = try LocalCanRoutes.decode(Data(#"{"3210":["https://stock.local","http://stock.local","https://stock.local"]}"#.utf8))
+        #expect(routes[3210]?.count == 2)
+        #expect(routes[3000] == nil)
+    }
+}

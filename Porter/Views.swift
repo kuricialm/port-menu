@@ -34,7 +34,7 @@ struct PortListView: View {
                 OnboardingView()
             }
         }
-        .frame(width: 340)
+        .frame(width: 480)
         .animation(.easeInOut(duration: 0.25), value: hasCompletedOnboarding)
     }
 }
@@ -45,21 +45,48 @@ struct PortMainContentView: View {
     @Environment(PortStore.self) private var store
     var updater: SPUUpdater
 
+    @State private var services = DevelopmentServices()
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PortHeaderView(updater: updater)
             Divider()
-
-            if let error = store.lastError, store.entries.isEmpty {
-                PortErrorStateView(error: error)
-            } else if store.entries.isEmpty && !store.isScanning {
-                PortEmptyStateView()
-            } else if store.entries.isEmpty && store.isScanning {
-                PortScanningStateView()
-            } else {
-                PortEntryListView()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Ports").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(16)
+                    if let error = store.lastError, store.entries.isEmpty {
+                        PortErrorStateView(error: error)
+                    } else if store.entries.isEmpty && !store.isScanning {
+                        PortEmptyStateView()
+                    } else if store.entries.isEmpty {
+                        PortScanningStateView()
+                    } else {
+                        PortEntryListView()
+                    }
+                    if let error = services.routeError {
+                        Text(error).font(.caption).foregroundStyle(.secondary).padding(16)
+                    }
+                    Divider()
+                    SimulatorSectionView()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 520)
+        }
+        .environment(services)
+        .task {
+            while !Task.isCancelled {
+                await services.refresh()
+                do { try await Task.sleep(for: .seconds(store.refreshInterval.rawValue)) }
+                catch { break }
             }
         }
+        .alert("Simulator Action Failed", isPresented: Binding(
+            get: { services.actionError != nil },
+            set: { if !$0 { services.actionError = nil } }
+        )) {
+            Button("OK") { services.actionError = nil }
+        } message: { Text(services.actionError ?? "") }
     }
 }
 
@@ -321,6 +348,7 @@ struct PortErrorStateView: View {
 // MARK: - Port Row
 
 struct PortRow: View {
+    @Environment(DevelopmentServices.self) private var services
     let entry: ActivePort
     let showTopDivider: Bool
     @Environment(PortStore.self) private var store
@@ -346,18 +374,34 @@ struct PortRow: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
 
+                    if let url = services.routes[entry.port]?.first {
+                        Text(url.absoluteString)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .help(url.absoluteString)
+                    }
                     Spacer()
-
-                    HStack(spacing: 2) {
+                }
+                HStack(spacing: 2) {
+                        Spacer()
                         HoverButton("Kill", role: .destructive) { killWithAnimation() }
-                        HoverButton("Open") {
+                        if let urls = services.routes[entry.port], let url = urls.first {
+                            if urls.count == 1 {
+                                HoverButton("Open .local") { NSWorkspace.shared.open(url) }
+                            } else {
+                                Menu("Open .local") {
+                                    ForEach(urls, id: \.self) { url in
+                                        Button(url.absoluteString) { NSWorkspace.shared.open(url) }
+                                    }
+                                }.menuStyle(.borderlessButton).fixedSize()
+                            }
+                        }
+                        HoverButton("Open localhost") {
                             NSWorkspace.shared.open(entry.url)
                         }
                     }
-                    .opacity(isHovered ? 1 : 0)
-                    .scaleEffect(isHovered ? 1 : 0.85, anchor: .trailing)
-                    .offset(x: isHovered ? 0 : 6)
-                }
 
                 HStack(spacing: 6) {
                     if !entry.branch.isEmpty {
@@ -397,7 +441,10 @@ struct PortRow: View {
             }
         }
         .contextMenu {
-            Button("Copy URL") {
+            ForEach(services.routes[entry.port] ?? [], id: \.self) { url in
+                Button("Copy " + url.absoluteString) { PortStore.copyToClipboard(url.absoluteString) }
+            }
+            Button("Copy localhost URL") {
                 PortStore.copyToClipboard(entry.url.absoluteString)
             }
             Button("Copy Port") {

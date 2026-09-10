@@ -327,7 +327,7 @@ struct LivePortScanner: PortScanning {
 
     // MARK: - Shell Execution (async, with timeout)
 
-    private func runShell(
+    func runShell(
         _ executable: String,
         args: [String],
         timeout: TimeInterval,

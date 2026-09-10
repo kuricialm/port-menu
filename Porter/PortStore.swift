@@ -13,8 +13,10 @@ final class PortStore {
     var isScanning: Bool = false
     var lastDiagnostics: ScanDiagnostics?
 
-    @ObservationIgnored
-    @AppStorage("refreshInterval") private var storedInterval: Double = RefreshInterval.defaultInterval.rawValue
+    private var storedInterval: Double {
+        get { UserDefaults.standard.object(forKey: "refreshInterval") as? Double ?? RefreshInterval.defaultInterval.rawValue }
+        set { UserDefaults.standard.set(newValue, forKey: "refreshInterval") }
+    }
 
     var refreshInterval: RefreshInterval {
         get { RefreshInterval(rawValue: storedInterval) ?? .defaultInterval }

@@ -3,6 +3,9 @@ import os
 
 @MainActor
 func moveToApplicationsIfNeeded() {
+    // Test hosts must not relocate or terminate during XCTest bootstrap.
+    guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil,
+          NSClassFromString("XCTestCase") == nil else { return }
     let bundlePath = Bundle.main.bundlePath
     let destinationURL = URL(filePath: "/Applications/Port Menu.app")
     let fileManager = FileManager.default

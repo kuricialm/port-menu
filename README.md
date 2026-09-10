@@ -15,7 +15,9 @@ Port Menu sits in your menu bar and automatically detects local development serv
 - **Auto-detection** — scans for running dev servers every few seconds
 - **Project context** — shows Git repo name, current branch, port, and uptime
 - **Kill or open** — stop a server or open it in your browser directly from the menu
-- **Copy URL** — right-click to copy the localhost URL
+- **LocalCan URLs** — reads existing enabled `.local` endpoints from `~/.localcan/projects`, with separate local and localhost open actions
+- **Simulators** — lists booted Apple Simulator devices and detected running apps, with Show and Shut Down actions
+- **Copy URL** — right-click to copy a saved LocalCan or localhost URL
 
 ## Download
 
