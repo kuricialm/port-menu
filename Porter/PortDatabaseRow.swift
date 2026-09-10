@@ -8,9 +8,10 @@ struct PortDatabaseRow: View {
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(entry.ownerLabel ?? entry.projectName)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Label(entry.ownerLabel ?? entry.projectName, systemImage: "cylinder")
+                .font(.system(.body, weight: .medium))
+                .foregroundStyle(.primary)
                 .lineLimit(1)
 
             Text(":\(String(entry.port))")
