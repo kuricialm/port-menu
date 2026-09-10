@@ -27,7 +27,11 @@ final class DevelopmentServices {
         defer { isRefreshing = false }
         async let localRoutes = LocalCanRoutes.load()
         async let devices = RunningSimulator.scan()
-        do { routes = try await localRoutes; routeError = nil }
+        do {
+            let result = try await localRoutes
+            routes = result.routes
+            routeError = result.warnings.isEmpty ? nil : result.warnings.joined(separator: "\n")
+        }
         catch { routes = [:]; routeError = "LocalCan routes unavailable: \(error.localizedDescription)" }
         let scan = await devices
         withAnimation(.smooth(duration: 0.25)) { simulators = scan.devices }

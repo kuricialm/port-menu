@@ -3,7 +3,7 @@ import SwiftUI
 
 private final class UpdaterDelegate: NSObject, SPUUpdaterDelegate {
     func feedURLString(for updater: SPUUpdater) -> String? {
-        "https://raw.githubusercontent.com/wieandteduard/port-menu/main/packaging/appcast.xml"
+        Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String
     }
 }
 
@@ -15,8 +15,10 @@ struct PorterApp: App {
     private let updaterDelegate = UpdaterDelegate()
 
     init() {
+        let isTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            || NSClassFromString("XCTestCase") != nil
         updaterController = SPUStandardUpdaterController(
-            startingUpdater: true,
+            startingUpdater: !isTestHost,
             updaterDelegate: updaterDelegate,
             userDriverDelegate: nil
         )
@@ -39,8 +41,8 @@ struct PorterApp: App {
                     .fontDesign(.monospaced)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Port Menu, \(store.entries.count) ports and \(services.simulators.count) simulators active")
-            .help("\(store.entries.count) ports · \(services.simulators.count) simulators")
+            .accessibilityLabel("Port Menu, \(store.entries.count) ports and \(services.simulators.count) simulators" + statusDescription)
+            .help("\(store.entries.count) ports · \(services.simulators.count) simulators" + statusDescription)
             .onAppear { store.ensurePolling() }
             .task {
                 await services.poll { store.refreshInterval.rawValue }
@@ -58,8 +60,15 @@ struct PorterApp: App {
         store.entries.count + services.simulators.count
     }
 
+    private var statusDescription: String {
+        if store.isStale && services.simulatorError != nil { return " · Port data is stale; simulator results may be incomplete" }
+        if store.isStale { return " · Ports may be out of date" }
+        if services.simulatorError != nil { return " · Simulator results may be incomplete" }
+        return " active"
+    }
+
     private var statusColor: Color {
-        if (store.lastError != nil || services.simulatorError != nil) && activeCount == 0 {
+        if store.lastError != nil || services.simulatorError != nil {
             return .orange
         }
         return activeCount == 0 ? .gray : .green

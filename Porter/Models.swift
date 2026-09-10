@@ -9,19 +9,45 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
     let projectName: String
     let branch: String
     let startTime: Date?
+    let processIdentity: ProcessIdentity?
+    let owner: PortOwner
+
+    var terminationRestriction: String? {
+        if owner == .sharedDocker {
+            return "Manage this port in Docker; its process is shared by other containers."
+        }
+        if processIdentity?.pid != pid || pid <= 1 {
+            return "The server process could not be verified. Refresh and try again."
+        }
+        return nil
+    }
+
+    var canTerminate: Bool { terminationRestriction == nil }
 
     var url: URL {
         URL(string: "http://localhost:\(port)")!
     }
 
-    init(port: UInt16, pid: Int32, projectName: String, branch: String, startTime: Date?) {
-        self.id = "\(port)-\(pid)"
+    init(port: UInt16, pid: Int32, projectName: String, branch: String, startTime: Date?,
+         processIdentity: ProcessIdentity? = nil, owner: PortOwner = .server) {
+        if let processIdentity {
+            self.id = "\(port)-\(pid)-\(processIdentity.startSeconds)-\(processIdentity.startMicroseconds)"
+        } else {
+            self.id = "\(port)-\(pid)"
+        }
         self.port = port
         self.pid = pid
         self.projectName = projectName
         self.branch = branch
         self.startTime = startTime
+        self.processIdentity = processIdentity
+        self.owner = owner
     }
+}
+
+enum PortOwner: Hashable, Sendable {
+    case server
+    case sharedDocker
 }
 
 // MARK: - Scan Result

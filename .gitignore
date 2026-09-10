@@ -7,3 +7,8 @@ DerivedData/
 xcuserdata/
 *.moved-aside
 *.orig
+
+__pycache__/
+*.p12
+*.p8
+*.key

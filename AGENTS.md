@@ -12,3 +12,9 @@
 
 - For every batch of app changes published by Bitrig, increment the patch component of `MARKETING_VERSION` and increment `CURRENT_PROJECT_VERSION` before the final build and commit. Keep Debug/Release and test targets consistent. Never reuse a version for a changed app build that the user will install. Documentation-only changes do not require an app release.
 - Show version and build in the app's Settings popover. Report the exact version in the handoff and distinguish a successful build from a verified installation in `/Applications/Port Menu.app`.
+
+## Distribution
+
+- Follow `docs/releasing.md` for signing, notarization, GitHub Actions, and Sparkle. Do not point this fork at upstream's feed or reuse upstream's update key. Keep private signing material out of Git and logs.
+- The release workflow advances version/build in its artifact if source versions were already published; continue bumping the project version for Bitrig app-change batches as above.
+- `python3 scripts/test-release-metadata.py` verifies version progression and feed ownership.

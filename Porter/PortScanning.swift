@@ -14,7 +14,6 @@ struct LivePortScanner: PortScanning {
 
     private static let branchTTL: TimeInterval = 30
     private static let cache = CacheStore()
-    private static let processTracker = ProcessTracker()
     private static let allowedFallbackProcessNames: Set<String> = [
         "air",
         "beam.smp",
@@ -75,9 +74,12 @@ struct LivePortScanner: PortScanning {
         async let cwdResult = resolveCWDs(pids: pids)
         async let startTimeResult = resolveStartTimes(pids: pids)
         let (cwds, startTimes) = await (cwdResult, startTimeResult)
+        let processes = pids.reduce(into: [Int32: ProcessSnapshot]()) { result, pid in
+            result[pid] = try? ProcessSnapshot.read(pid: pid)
+        }
 
         return await resolveProjects(parsed: parsed, cwds: cwds,
-                                     startTimes: startTimes)
+                                     startTimes: startTimes, processes: processes)
     }
 
     // MARK: - lsof Parsing (static for testability)
@@ -107,12 +109,7 @@ struct LivePortScanner: PortScanning {
             let stateCol = String(cols[cols.count - 1])
             guard stateCol == "(LISTEN)" else { continue }
 
-            guard port >= 1024, port < 49152 else {
-                if Log.isVerbose {
-                    Log.scanner.debug("Skipping out-of-range port \(port)")
-                }
-                continue
-            }
+            guard port > 0 else { continue }
 
             guard seen.insert(port).inserted else { continue }
             results.append(ParsedPort(port: port, pid: pid, processName: processName))
@@ -180,7 +177,8 @@ struct LivePortScanner: PortScanning {
     private func resolveProjects(
         parsed: [ParsedPort],
         cwds: [Int32: String],
-        startTimes: [Int32: Date]
+        startTimes: [Int32: Date],
+        processes: [Int32: ProcessSnapshot]
     ) async -> [ActivePort] {
         var gitRoots: [String: URL] = [:]
         var branches: [String: String] = [:]
@@ -198,7 +196,7 @@ struct LivePortScanner: PortScanning {
 
             if let root {
                 gitRoots[cwd] = root
-                let rootPath = root.path()
+                let rootPath = root.path
                 if branches[rootPath] == nil {
                     if let cached = Self.cache.branch(for: rootPath, ttl: Self.branchTTL) {
                         branches[rootPath] = cached
@@ -212,13 +210,13 @@ struct LivePortScanner: PortScanning {
         }
 
         let activeCWDs = Set(cwds.values)
-        let activeRootPaths = Set(gitRoots.values.map { $0.path() })
+        let activeRootPaths = Set(gitRoots.values.map(\.path))
         Self.cache.prune(activeCWDs: activeCWDs, activeRootPaths: activeRootPaths)
 
         return parsed.compactMap { info -> ActivePort? in
             let cwd = cwds[info.pid]
             let gitRoot = cwd.flatMap { gitRoots[$0] }
-            let rootPath = gitRoot?.path()
+            let rootPath = gitRoot?.path
 
             if gitRoot == nil, !Self.shouldKeepFallbackProcess(processName: info.processName, cwd: cwd) {
                 if Log.isVerbose {
@@ -242,7 +240,10 @@ struct LivePortScanner: PortScanning {
                 pid: info.pid,
                 projectName: projectName,
                 branch: rootPath.flatMap { branches[$0] } ?? "",
-                startTime: startTimes[info.pid]
+                startTime: processes[info.pid]?.identity.startTime ?? startTimes[info.pid],
+                processIdentity: processes[info.pid]?.identity,
+                owner: Self.isDockerProcess(info.processName) || Self.isDockerProcess(processes[info.pid]?.name ?? "")
+                    ? .sharedDocker : .server
             )
         }
     }
@@ -316,8 +317,8 @@ struct LivePortScanner: PortScanning {
     static func findGitRoot(from path: String) -> URL? {
         var current = URL(filePath: path)
         let fm = FileManager.default
-        while current.path() != "/" {
-            if fm.fileExists(atPath: current.appending(path: ".git").path()) {
+        while current.path != "/" {
+            if fm.fileExists(atPath: current.appending(path: ".git").path) {
                 return current
             }
             current = current.deletingLastPathComponent()
@@ -333,84 +334,15 @@ struct LivePortScanner: PortScanning {
         timeout: TimeInterval,
         environment: [String: String]? = nil
     ) async throws -> String {
-        let command = ([executable] + args).joined(separator: " ")
-        let token = UUID()
-
-        // Run the blocking process on a background thread via a detached task,
-        // then race it against a timeout task using withTaskGroup.
-        return try await withThrowingTaskGroup(of: String.self) { group in
-            group.addTask {
-                try await Self.runProcess(
-                    executable: executable,
-                    args: args,
-                    environment: environment,
-                    token: token
-                )
-            }
-
-            group.addTask {
-                try await Task.sleep(for: .seconds(timeout))
-                Self.processTracker.terminate(token: token)
-                Log.shell.warning("Process timed out: \(command)")
-                throw ScanError.lsofTimeout
-            }
-
-            // Return the first result (success or error); cancel the other task.
-            defer {
-                Self.processTracker.terminate(token: token)
-                group.cancelAll()
-            }
-            let result = try await group.next()!
-            return result
-        }
-    }
-
-    private static func runProcess(
-        executable: String,
-        args: [String],
-        environment: [String: String]?,
-        token: UUID
-    ) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            let stdout = Pipe()
-            let stderr = Pipe()
-
-            process.executableURL = URL(filePath: executable)
-            process.arguments = args
-            process.standardOutput = stdout
-            process.standardError = stderr
-
-            if let env = environment {
-                var combined = ProcessInfo.processInfo.environment
-                for (k, v) in env { combined[k] = v }
-                process.environment = combined
-            }
-
-            do {
-                processTracker.store(process, for: token)
-                try process.run()
-                let data = stdout.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
-                processTracker.clear(token: token)
-
-                if process.terminationStatus != 0 {
-                    let errData = stderr.fileHandleForReading.availableData
-                    let errMsg = String(data: errData, encoding: .utf8) ?? ""
-                    if Log.isVerbose {
-                        Log.shell.debug("Process exit \(process.terminationStatus): \(executable) — \(errMsg)")
-                    }
-                    continuation.resume(throwing: ScanError.lsofFailed(
-                        "\(executable) exited with \(process.terminationStatus)"))
-                    return
-                }
-
-                let output = String(data: data, encoding: .utf8) ?? ""
-                continuation.resume(returning: output)
-            } catch {
-                processTracker.clear(token: token)
-                continuation.resume(throwing: ScanError.lsofFailed(error.localizedDescription))
-            }
+        do {
+            return try await ProcessRunner.run(executable, arguments: args, timeout: timeout,
+                                               environment: environment)
+        } catch ProcessRunnerError.timedOut {
+            throw ScanError.lsofTimeout
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw ScanError.lsofFailed(error.localizedDescription)
         }
     }
 }
@@ -448,32 +380,6 @@ final class CacheStore: Sendable {
         _branches.withLock { cache in
             cache = cache.filter { activeRootPaths.contains($0.key) }
         }
-    }
-}
-
-final class ProcessTracker: @unchecked Sendable {
-    private let lock = NSLock()
-    private var processes: [UUID: Process] = [:]
-
-    func store(_ process: Process, for token: UUID) {
-        lock.lock()
-        processes[token] = process
-        lock.unlock()
-    }
-
-    func clear(token: UUID) {
-        lock.lock()
-        processes[token] = nil
-        lock.unlock()
-    }
-
-    func terminate(token: UUID) {
-        lock.lock()
-        let process = processes[token]
-        lock.unlock()
-
-        guard let process, process.isRunning else { return }
-        process.terminate()
     }
 }
 

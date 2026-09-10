@@ -41,7 +41,7 @@ struct LsofParserTests {
         #expect(parsed[0].port == 3000)
     }
 
-    @Test func skipsPrivilegedPorts() {
+    @Test func includesPrivilegedDevelopmentPorts() {
         let output = """
         COMMAND     PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
         nginx     12345   root   6u   IPv4 0x1234567890      0t0  TCP *:80 (LISTEN)
@@ -50,21 +50,19 @@ struct LsofParserTests {
         """
 
         let parsed = LivePortScanner.parseLsofOutput(output)
-        #expect(parsed.count == 1)
-        #expect(parsed[0].port == 3000)
+        #expect(parsed.map(\.port) == [80, 443, 3000])
     }
 
-    @Test func skipsEphemeralPorts() {
+    @Test func includesHighDevelopmentPorts() {
         let output = """
         COMMAND     PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
-        Cursor    13797   user   33u  IPv4 0x1234567890      0t0  TCP 127.0.0.1:52722 (LISTEN)
-        Beeper    64785   user   69u  IPv4 0x2345678901      0t0  TCP 127.0.0.1:55829 (LISTEN)
+        node      13797   user   33u  IPv4 0x1234567890      0t0  TCP 127.0.0.1:52722 (LISTEN)
+        python3   64785   user   69u  IPv4 0x2345678901      0t0  TCP 127.0.0.1:55829 (LISTEN)
         node      23456   user   22u  IPv4 0x3456789012      0t0  TCP *:3000 (LISTEN)
         """
 
         let parsed = LivePortScanner.parseLsofOutput(output)
-        #expect(parsed.count == 1)
-        #expect(parsed[0].port == 3000)
+        #expect(parsed.map(\.port) == [3000, 52722, 55829])
     }
 
     @Test func skipsNonListenLines() {
@@ -272,6 +270,17 @@ struct GitRootTests {
         let result = LivePortScanner.findGitRoot(from: "/tmp")
         #expect(result == nil)
     }
+
+    @Test func findsGitRootThroughSpacesAndUnicode() throws {
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        let root = temporary.appendingPathComponent("Port Menu أسهمي")
+        let source = root.appendingPathComponent("Source Files")
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: root.appendingPathComponent(".git"), withIntermediateDirectories: true)
+
+        #expect(LivePortScanner.findGitRoot(from: source.path)?.path == root.path)
+    }
 }
 
 // MARK: - Display Name Tests
@@ -432,42 +441,6 @@ struct DockerDisplayNameTests {
         try await Task.sleep(nanoseconds: 200_000_000)
 
         #expect(store.lastError != nil)
-    }
-
-    @Test @MainActor func killProcessAddsToRecentlyKilled() async throws {
-        let ports = [
-            ActivePort(port: 3000, pid: 99999, projectName: "test", branch: "", startTime: nil)
-        ]
-        let store = PortStore(scanner: FakePortScanner(ports: ports, delay: 0))
-
-        store.refresh()
-        try await Task.sleep(nanoseconds: 200_000_000)
-        #expect(store.entries.count == 1)
-
-        store.killProcess(pid: 99999, port: 3000)
-        store.refresh()
-        try await Task.sleep(nanoseconds: 200_000_000)
-
-        #expect(store.entries.isEmpty)
-    }
-
-    @Test @MainActor func killAllProcessesFiltersRecentlyKilledPorts() async throws {
-        let ports = [
-            ActivePort(port: 3000, pid: 99998, projectName: "web", branch: "", startTime: nil),
-            ActivePort(port: 5173, pid: 99997, projectName: "app", branch: "", startTime: nil)
-        ]
-        let store = PortStore(scanner: FakePortScanner(ports: ports, delay: 0))
-
-        store.refresh()
-        try await Task.sleep(nanoseconds: 200_000_000)
-        #expect(store.entries.count == 2)
-
-        store.killAllProcesses()
-        #expect(store.entries.isEmpty)
-
-        store.refresh()
-        try await Task.sleep(nanoseconds: 200_000_000)
-        #expect(store.entries.isEmpty)
     }
 
     @Test @MainActor func diagnosticsSnapshot() {

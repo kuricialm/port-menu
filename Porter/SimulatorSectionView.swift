@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SimulatorSectionView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(DevelopmentServices.self) private var services
 
     var body: some View {
@@ -27,6 +28,7 @@ struct SimulatorSectionView: View {
             }
         }
         .padding(.bottom, 6)
+        .transaction { if reduceMotion { $0.disablesAnimations = true; $0.animation = nil } }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -51,7 +53,7 @@ private struct SimulatorRow: View {
                     RowActionButton(title: "Shut Down " + device.name, systemImage: "power", destructive: true) {
                         services.perform(device, shutdown: true)
                     }
-                    RowActionButton(title: device.isHostedByBitrig ? "Show in Bitrig" : "Show Simulator",
+                    RowActionButton(title: device.isHostedByBitrig ? "Open Bitrig" : "Show Simulator",
                                     systemImage: "arrow.up.forward.square") {
                         services.perform(device, shutdown: false)
                     }
@@ -78,8 +80,9 @@ private struct SimulatorRow: View {
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .contextMenu {
-            Button("Show", systemImage: "arrow.up.forward.square") { services.perform(device, shutdown: false) }
+            Button(device.isHostedByBitrig ? "Open Bitrig" : "Show Simulator", systemImage: "arrow.up.forward.square") { services.perform(device, shutdown: false) }
             Button("Shut Down", systemImage: "power", role: .destructive) { services.perform(device, shutdown: true) }
         }
+        .disabled(services.busy.contains(device.id))
     }
 }
