@@ -2,7 +2,7 @@
 
 - Native macOS SwiftUI menu bar app. Source lives in `Porter/`; unit tests in `PorterTests/`.
 - Read `PRODUCT.md` for fork scope and `README.md` for build commands.
-- Preserve the existing English UI and compact menu styling.
+- Preserve the author’s original English UI, two-line rows, compact spacing, animated action reveal, capsule button styling, and hover/press springs. Use labeled SF Symbol actions when added controls would crowd a row; do not introduce extra action lines or permanently visible controls.
 - Use Bitrig's build tool for app builds. Unit verification: `xcodebuild test -project Porter.xcodeproj -scheme Porter -destination 'platform=macOS,arch=arm64' -only-testing:PorterTests`.
 - LocalCan integration is read-only. Never create, rewrite, or remove saved routes.
 - Simulator discovery is read-only; shut down only the specific device selected by the user.

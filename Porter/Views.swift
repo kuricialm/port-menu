@@ -54,7 +54,12 @@ struct PortMainContentView: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Ports").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(16)
+                    Text("Ports")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+                        .padding(.bottom, 2)
                     if let error = store.lastError, store.entries.isEmpty {
                         PortErrorStateView(error: error)
                     } else if store.entries.isEmpty && !store.isScanning {
@@ -376,6 +381,8 @@ struct PortRow: View {
     @Environment(PortStore.self) private var store
     @State private var isHovered = false
     @State private var slidOut = false
+    @FocusState private var actionsFocused: Bool
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -397,33 +404,51 @@ struct PortRow: View {
                         .truncationMode(.tail)
 
                     if let url = services.routes[entry.port]?.first {
-                        Text(url.absoluteString)
+                        Text(url.host() ?? url.absoluteString)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .help(url.absoluteString)
                     }
-                    Spacer()
-                }
-                HStack(spacing: 2) {
-                        Spacer()
-                        HoverButton("Kill", role: .destructive) { killWithAnimation() }
+                    Spacer(minLength: 0)
+
+                    HStack(spacing: 2) {
+                        RowActionButton(title: "Kill Server", systemImage: "stop.fill", destructive: true) {
+                            killWithAnimation()
+                        }
                         if let urls = services.routes[entry.port], let url = urls.first {
                             if urls.count == 1 {
-                                HoverButton("Open .local") { NSWorkspace.shared.open(url) }
+                                RowActionButton(title: "Open LocalCan — " + url.absoluteString, systemImage: "network") {
+                                    NSWorkspace.shared.open(url)
+                                }
                             } else {
-                                Menu("Open .local") {
+                                Menu {
                                     ForEach(urls, id: \.self) { url in
                                         Button(url.absoluteString) { NSWorkspace.shared.open(url) }
                                     }
-                                }.menuStyle(.borderlessButton).fixedSize()
+                                } label: {
+                                    Label("Open LocalCan", systemImage: "network")
+                                        .labelStyle(.iconOnly)
+                                        .font(.caption)
+                                        .frame(width: 12, height: 14)
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 4)
+                                }
+                                .menuStyle(.borderlessButton)
+                                .menuIndicator(.hidden)
+                                .buttonStyle(RowButtonStyle(destructive: false))
+                                .fixedSize()
+                                .help("Open LocalCan")
                             }
                         }
-                        HoverButton("Open localhost") {
+                        RowActionButton(title: "Open localhost", systemImage: "arrow.up.forward.square") {
                             NSWorkspace.shared.open(entry.url)
                         }
                     }
+                    .focused($actionsFocused)
+                    .modifier(RowActionReveal(isVisible: isHovered || actionsFocused || voiceOverEnabled))
+                }
 
                 HStack(spacing: 6) {
                     if !entry.branch.isEmpty {
@@ -458,7 +483,7 @@ struct PortRow: View {
         .offset(x: slidOut ? 340 : 0)
         .contentShape(Rectangle())
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(.smooth(duration: 0.15)) {
                 isHovered = hovering
             }
         }

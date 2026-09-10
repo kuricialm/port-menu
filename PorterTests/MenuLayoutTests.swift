@@ -10,6 +10,7 @@ struct MenuLayoutTests {
         store.entries = [ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: nil)]
         let services = DevelopmentServices()
         services.routes = [3210: [URL(string: "https://stock.local")!]]
+        services.simulators = [RunningSimulator(udid: "sample", name: "iPhone 17 Pro Max", runtime: "iOS 27.0", appNames: ["Piqly"])]
         let updater = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
         let view = PortMainContentView(updater: updater.updater, services: services)
             .environment(store)
@@ -29,5 +30,16 @@ struct MenuLayoutTests {
                 try data.write(to: URL(fileURLWithPath: "/tmp/portmenu-layout.png"))
             }
         }
+    }
+
+    @Test @MainActor func portRowRetainsOriginalTwoLineHeight() {
+        let store = PortStore(scanner: FakePortScanner(ports: [], delay: 0))
+        let services = DevelopmentServices()
+        services.routes = [3210: [URL(string: "https://stock.local")!]]
+        let entry = ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: nil)
+        let host = NSHostingView(rootView: PortRow(entry: entry, showTopDivider: false)
+            .environment(store).environment(services).frame(width: 340))
+        #expect(host.fittingSize.height < 64)
+        #expect(host.fittingSize.height > 35)
     }
 }

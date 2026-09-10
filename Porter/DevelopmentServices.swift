@@ -19,8 +19,9 @@ final class DevelopmentServices {
         async let devices = RunningSimulator.scan()
         do { routes = try await localRoutes; routeError = nil }
         catch { routes = [:]; routeError = "LocalCan routes unavailable: \(error.localizedDescription)" }
-        do { simulators = try await devices; simulatorError = nil }
-        catch { simulatorError = "Simulator discovery unavailable. Check that Xcode is installed and selected." }
+        let scan = await devices
+        withAnimation(.smooth(duration: 0.25)) { simulators = scan.devices }
+        simulatorError = scan.warning
     }
 
     func perform(_ device: RunningSimulator, shutdown: Bool) {
@@ -30,10 +31,17 @@ final class DevelopmentServices {
             do {
                 let scanner = LivePortScanner()
                 if shutdown {
-                    _ = try await scanner.runShell("/usr/bin/xcrun", args: ["simctl", "shutdown", device.id], timeout: 15)
+                    _ = try await scanner.runShell("/usr/bin/xcrun", args: device.shutdownArguments, timeout: 15)
+                } else if device.isHostedByBitrig {
+                    // This device is embedded in Bitrig. Bring its host forward
+                    // instead of trying to reopen it in Xcode's default device set.
+                    _ = try await scanner.runShell("/usr/bin/open", args: ["-b", "app.bitrig.bitrigapp"], timeout: 10)
                 } else {
                     let developer = try await scanner.runShell("/usr/bin/xcode-select", args: ["-p"], timeout: 5).trimmingCharacters(in: .whitespacesAndNewlines)
-                    _ = try await scanner.runShell("/usr/bin/open", args: ["-a", developer + "/Applications/Simulator.app", "--args", "-CurrentDeviceUDID", device.id], timeout: 10)
+                    let arguments = ["-a", developer + "/Applications/Simulator.app", "--args"]
+                        + (device.deviceSetPath.map { ["-DeviceSetPath", $0] } ?? [])
+                        + ["-CurrentDeviceUDID", device.udid]
+                    _ = try await scanner.runShell("/usr/bin/open", args: arguments, timeout: 10)
                 }
                 await refresh()
             } catch { actionError = error.localizedDescription }

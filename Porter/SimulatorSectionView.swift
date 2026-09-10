@@ -4,42 +4,73 @@ struct SimulatorSectionView: View {
     @Environment(DevelopmentServices.self) private var services
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             Text("Simulators")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 2)
             if let error = services.simulatorError {
-                Text(error).font(.caption).foregroundStyle(.secondary)
+                Text(error)
+                    .font(.caption).foregroundStyle(.secondary)
+                    .padding(.horizontal, 16).padding(.vertical, 8)
             } else if services.simulators.isEmpty {
                 Text("No running simulators")
-                    .font(.callout).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
             }
-            ForEach(services.simulators) { device in
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Image(systemName: "app.dashed")
-                            .foregroundStyle(.secondary)
-                            .accessibilityHidden(true)
-                        Text(device.appNames.isEmpty ? device.name : device.appNames.joined(separator: ", "))
-                            .font(.body.weight(.medium))
-                            .lineLimit(2)
+            ForEach(Array(services.simulators.enumerated()), id: \.element.id) { index, device in
+                if index > 0 { Divider().padding(.horizontal, 16) }
+                SimulatorRow(device: device)
+            }
+        }
+        .padding(.bottom, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SimulatorRow: View {
+    var device: RunningSimulator
+    @Environment(DevelopmentServices.self) private var services
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @State private var isHovered = false
+    @FocusState private var actionsFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Circle().fill(.green).frame(width: 6, height: 6).offset(y: -1)
+                    .accessibilityHidden(true)
+                Text(device.appNames.isEmpty ? device.name : device.appNames.joined(separator: ", "))
+                    .font(.system(.body, weight: .medium))
+                    .lineLimit(1).truncationMode(.tail)
+                Spacer(minLength: 0)
+                HStack(spacing: 2) {
+                    RowActionButton(title: "Shut Down " + device.name, systemImage: "power", destructive: true) {
+                        services.perform(device, shutdown: true)
                     }
-                    Text(device.name + " • " + device.runtime)
-                        .font(.caption).foregroundStyle(.secondary)
-                    HStack(spacing: 2) {
-                        Spacer()
-                        HoverButton("Shut Down", role: .destructive) { services.perform(device, shutdown: true) }
-                            .accessibilityLabel("Shut down " + device.name)
-                        HoverButton("Show") { services.perform(device, shutdown: false) }
-                            .accessibilityLabel("Show " + device.name)
+                    RowActionButton(title: device.isHostedByBitrig ? "Show in Bitrig" : "Show Simulator",
+                                    systemImage: "arrow.up.forward.square") {
+                        services.perform(device, shutdown: false)
                     }
                 }
                 .disabled(services.busy.contains(device.id))
-                if device.id != services.simulators.last?.id { Divider() }
+                .focused($actionsFocused)
+                .modifier(RowActionReveal(isVisible: isHovered || actionsFocused || voiceOverEnabled))
             }
+            Text(device.name + " • " + device.runtime)
+                .font(.caption).foregroundStyle(.secondary)
+                .lineLimit(1).truncationMode(.middle)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+        .contextMenu {
+            Button("Show", systemImage: "arrow.up.forward.square") { services.perform(device, shutdown: false) }
+            Button("Shut Down", systemImage: "power", role: .destructive) { services.perform(device, shutdown: true) }
+        }
     }
 }
