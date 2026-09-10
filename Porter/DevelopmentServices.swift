@@ -11,6 +11,16 @@ final class DevelopmentServices {
     var busy: Set<String> = []
     private var isRefreshing = false
 
+    // The persistent menu-bar label owns this task so counts keep updating
+    // when the popover is closed. The popover reads this same observable instance.
+    func poll(refreshInterval: @MainActor () -> TimeInterval) async {
+        while !Task.isCancelled {
+            await refresh()
+            do { try await Task.sleep(for: .seconds(refreshInterval())) }
+            catch { break }
+        }
+    }
+
     func refresh() async {
         guard !isRefreshing else { return }
         isRefreshing = true

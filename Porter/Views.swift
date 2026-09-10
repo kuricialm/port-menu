@@ -45,7 +45,7 @@ struct PortMainContentView: View {
     @Environment(PortStore.self) private var store
     var updater: SPUUpdater
 
-    @State var services = DevelopmentServices()
+    @Environment(DevelopmentServices.self) private var services
     @State private var contentHeight: CGFloat = 280
 
     var body: some View {
@@ -88,14 +88,6 @@ struct PortMainContentView: View {
             .frame(height: min(max(contentHeight, 1), 520))
             .onPreferenceChange(MenuContentHeightKey.self) { height in
                 if height > 0 { contentHeight = height }
-            }
-        }
-        .environment(services)
-        .task {
-            while !Task.isCancelled {
-                await services.refresh()
-                do { try await Task.sleep(for: .seconds(store.refreshInterval.rawValue)) }
-                catch { break }
             }
         }
         .alert("Simulator Action Failed", isPresented: Binding(

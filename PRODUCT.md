@@ -12,4 +12,6 @@ Show booted Apple Simulator devices across installed runtimes, including iOS, wa
 
 ## Presentation
 
+The menu-bar badge counts active port rows plus booted simulator devices (one count per device, regardless of how many apps run inside). It refreshes even while the menu is closed. Its tooltip and accessibility label give the port/simulator breakdown.
+
 Separate Ports and Simulators sections using the existing English language, typography, and controls. Keep the original 340-point menu width, size the menu height to its contents, cap the scroll area at 520 points, and retain the author’s two-line rows and animated hover reveal. Use compact SF Symbol actions with tooltips, preserving the capsule hover/press springs. Reveal actions for keyboard focus and VoiceOver as well as pointer hover.

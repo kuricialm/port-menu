@@ -12,7 +12,8 @@ struct MenuLayoutTests {
         services.routes = [3210: [URL(string: "https://stock.local")!]]
         services.simulators = [RunningSimulator(udid: "sample", name: "iPhone 17 Pro Max", runtime: "iOS 27.0", appNames: ["Piqly"])]
         let updater = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
-        let view = PortMainContentView(updater: updater.updater, services: services)
+        let view = PortMainContentView(updater: updater.updater)
+            .environment(services)
             .environment(store)
             .frame(width: 340)
             .background(Color(nsColor: .windowBackgroundColor))
