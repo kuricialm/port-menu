@@ -41,7 +41,7 @@ struct LsofParserTests {
         #expect(parsed[0].port == 3000)
     }
 
-    @Test func skipsPrivilegedPorts() {
+    @Test func includesPrivilegedDevelopmentPorts() {
         let output = """
         COMMAND     PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
         nginx     12345   root   6u   IPv4 0x1234567890      0t0  TCP *:80 (LISTEN)
@@ -50,21 +50,19 @@ struct LsofParserTests {
         """
 
         let parsed = LivePortScanner.parseLsofOutput(output)
-        #expect(parsed.count == 1)
-        #expect(parsed[0].port == 3000)
+        #expect(parsed.map(\.port) == [80, 443, 3000])
     }
 
-    @Test func skipsEphemeralPorts() {
+    @Test func includesHighDevelopmentPorts() {
         let output = """
         COMMAND     PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
-        Cursor    13797   user   33u  IPv4 0x1234567890      0t0  TCP 127.0.0.1:52722 (LISTEN)
-        Beeper    64785   user   69u  IPv4 0x2345678901      0t0  TCP 127.0.0.1:55829 (LISTEN)
+        node      13797   user   33u  IPv4 0x1234567890      0t0  TCP 127.0.0.1:52722 (LISTEN)
+        python3   64785   user   69u  IPv4 0x2345678901      0t0  TCP 127.0.0.1:55829 (LISTEN)
         node      23456   user   22u  IPv4 0x3456789012      0t0  TCP *:3000 (LISTEN)
         """
 
         let parsed = LivePortScanner.parseLsofOutput(output)
-        #expect(parsed.count == 1)
-        #expect(parsed[0].port == 3000)
+        #expect(parsed.map(\.port) == [3000, 52722, 55829])
     }
 
     @Test func skipsNonListenLines() {
@@ -148,9 +146,20 @@ struct LsofParserTests {
 
 struct ActivePortTests {
 
+    @Test func classifiesPostgreSQLUsingEitherProcessNameSource() {
+        #expect(LivePortScanner.owner(processName: "postgres") == .database(.postgreSQL))
+        #expect(LivePortScanner.owner(processName: "postmaste") == .database(.postgreSQL))
+        #expect(LivePortScanner.owner(processName: "postmaste", kernelName: "postmaster") == .database(.postgreSQL))
+        #expect(LivePortScanner.owner(processName: "node", kernelName: "postgres") == .database(.postgreSQL))
+        #expect(LivePortScanner.owner(processName: "postgres-tool") == .server)
+        #expect(LivePortScanner.owner(processName: "node") == .server)
+    }
+
     @Test func urlConstruction() {
         let port = ActivePort(port: 3000, pid: 123, projectName: "test", branch: "main", startTime: nil)
         #expect(port.url.absoluteString == "http://localhost:3000")
+        #expect(port.canOpenInBrowser)
+        #expect(port.ownerLabel == nil)
     }
 
     @Test func compositeIdentity() {
@@ -271,6 +280,17 @@ struct GitRootTests {
     @Test func returnsNilWhenNoGitRoot() {
         let result = LivePortScanner.findGitRoot(from: "/tmp")
         #expect(result == nil)
+    }
+
+    @Test func findsGitRootThroughSpacesAndUnicode() throws {
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        let root = temporary.appendingPathComponent("Port Menu أسهمي")
+        let source = root.appendingPathComponent("Source Files")
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: root.appendingPathComponent(".git"), withIntermediateDirectories: true)
+
+        #expect(LivePortScanner.findGitRoot(from: source.path)?.path == root.path)
     }
 }
 
@@ -434,42 +454,6 @@ struct DockerDisplayNameTests {
         #expect(store.lastError != nil)
     }
 
-    @Test @MainActor func killProcessAddsToRecentlyKilled() async throws {
-        let ports = [
-            ActivePort(port: 3000, pid: 99999, projectName: "test", branch: "", startTime: nil)
-        ]
-        let store = PortStore(scanner: FakePortScanner(ports: ports, delay: 0))
-
-        store.refresh()
-        try await Task.sleep(nanoseconds: 200_000_000)
-        #expect(store.entries.count == 1)
-
-        store.killProcess(pid: 99999, port: 3000)
-        store.refresh()
-        try await Task.sleep(nanoseconds: 200_000_000)
-
-        #expect(store.entries.isEmpty)
-    }
-
-    @Test @MainActor func killAllProcessesFiltersRecentlyKilledPorts() async throws {
-        let ports = [
-            ActivePort(port: 3000, pid: 99998, projectName: "web", branch: "", startTime: nil),
-            ActivePort(port: 5173, pid: 99997, projectName: "app", branch: "", startTime: nil)
-        ]
-        let store = PortStore(scanner: FakePortScanner(ports: ports, delay: 0))
-
-        store.refresh()
-        try await Task.sleep(nanoseconds: 200_000_000)
-        #expect(store.entries.count == 2)
-
-        store.killAllProcesses()
-        #expect(store.entries.isEmpty)
-
-        store.refresh()
-        try await Task.sleep(nanoseconds: 200_000_000)
-        #expect(store.entries.isEmpty)
-    }
-
     @Test @MainActor func diagnosticsSnapshot() {
         let store = PortStore(scanner: FakePortScanner(ports: [], delay: 0))
         let snapshot = store.diagnosticsSnapshot
@@ -493,5 +477,21 @@ struct ScanDiagnosticsTests {
         #expect(summary.contains("42"))
         #expect(summary.contains("3 ports"))
         #expect(summary.contains("lsof"))
+    }
+}
+
+struct DevelopmentServicesTests {
+    @Test func decodesBootedDevicesAcrossPlatforms() throws {
+        let json = #"{"devices":{"com.apple.CoreSimulator.SimRuntime.watchOS-26-1":[{"udid":"watch","name":"Apple Watch","state":"Booted"}],"com.apple.CoreSimulator.SimRuntime.iOS-26-1":[{"udid":"phone","name":"iPhone 17 Pro","state":"Booted","isAvailable":true},{"udid":"off","name":"iPad","state":"Shutdown"}]}}"#
+        let devices = try RunningSimulator.decode(Data(json.utf8))
+        #expect(devices.count == 2)
+        #expect(devices.contains { $0.runtime == "iOS 26.1" })
+        #expect(devices.contains { $0.runtime == "watchOS 26.1" })
+    }
+
+    @Test func preservesMultipleSavedEndpoints() throws {
+        let routes = try LocalCanRoutes.decode(Data(#"{"3210":["https://stock.local","http://stock.local","https://stock.local"]}"#.utf8))
+        #expect(routes[3210]?.count == 2)
+        #expect(routes[3000] == nil)
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Onboarding
 
 struct OnboardingView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var contentReady = false
     @State private var sequenceStarted = false
@@ -83,15 +84,16 @@ struct OnboardingView: View {
         .frame(width: 340, height: 270)
         .clipped()
         .opacity(contentReady ? 1 : 0)
-        .task {
-            if Self.hasAnimatedThisLaunch {
+        .task(id: reduceMotion) {
+            if reduceMotion || Self.hasAnimatedThisLaunch {
+                portsGone = true
                 contentReady = true
                 titleVisible = true
                 subtitleVisible = true
                 buttonsVisible = true
                 return
             }
-            try? await Task.sleep(for: .seconds(0.25))
+            do { try await Task.sleep(for: .seconds(0.25)) } catch { return }
             contentReady = true
             guard !sequenceStarted else { return }
             sequenceStarted = true
@@ -101,17 +103,13 @@ struct OnboardingView: View {
     }
 
     private func runSequence() async {
+        var previousDelay = 0.0
         for i in ports.indices {
-            let delay = revealDelays[i]
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(delay))
-                withAnimation(.easeOut(duration: 0.16)) {
-                    portVisible[i] = true
-                }
-            }
+            do { try await Task.sleep(for: .seconds(revealDelays[i] - previousDelay)) } catch { return }
+            previousDelay = revealDelays[i]
+            withAnimation(.easeOut(duration: 0.16)) { portVisible[i] = true }
         }
-
-        try? await Task.sleep(for: .seconds(1.7))
+        do { try await Task.sleep(for: .seconds(1.7 - previousDelay)) } catch { return }
         withAnimation(.easeInOut(duration: 0.35)) {
             portsGone = true
         }

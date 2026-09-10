@@ -13,15 +13,14 @@ struct CheckForUpdatesView: View {
             updater.checkForUpdates()
         }
         .disabled(!canCheckForUpdates)
-        .onAppear {
-            canCheckForUpdates = updater.canCheckForUpdates
-        }
+        .onReceive(updater.publisher(for: \.canCheckForUpdates)) { canCheckForUpdates = $0 }
     }
 }
 
 // MARK: - Port List
 
 struct PortListView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(PortStore.self) private var store
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     var updater: SPUUpdater
@@ -35,7 +34,7 @@ struct PortListView: View {
             }
         }
         .frame(width: 340)
-        .animation(.easeInOut(duration: 0.25), value: hasCompletedOnboarding)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: hasCompletedOnboarding)
     }
 }
 
@@ -45,21 +44,83 @@ struct PortMainContentView: View {
     @Environment(PortStore.self) private var store
     var updater: SPUUpdater
 
+    @Environment(DevelopmentServices.self) private var services
+    @State private var contentHeight: CGFloat = 280
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PortHeaderView(updater: updater)
             Divider()
-
-            if let error = store.lastError, store.entries.isEmpty {
-                PortErrorStateView(error: error)
-            } else if store.entries.isEmpty && !store.isScanning {
-                PortEmptyStateView()
-            } else if store.entries.isEmpty && store.isScanning {
-                PortScanningStateView()
-            } else {
-                PortEntryListView()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Ports")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+                        .padding(.bottom, 2)
+                    if let error = store.lastError, store.entries.isEmpty {
+                        PortErrorStateView(error: error)
+                    } else if store.entries.isEmpty && !store.isScanning {
+                        PortEmptyStateView()
+                    } else if store.entries.isEmpty {
+                        PortScanningStateView()
+                    } else {
+                        PortEntryListView()
+                    }
+                    if store.isStale, !store.entries.isEmpty {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle")
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Ports may be out of date")
+                                if let date = store.lastSuccessfulScan {
+                                    Text("Last scanned \(date.formatted(date: .omitted, time: .shortened))")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer(minLength: 0)
+                            Button("Retry") { store.refresh() }
+                                .buttonStyle(.plain)
+                        }
+                        .font(.caption).foregroundStyle(.orange)
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .help(store.lastError?.localizedDescription ?? "")
+                    }
+                    if let error = services.routeError {
+                        Text(error).font(.caption).foregroundStyle(.secondary).padding(16)
+                    }
+                    Divider()
+                    SimulatorSectionView()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: MenuContentHeightKey.self, value: geometry.size.height)
+                    }
+                }
+            }
+            // A menu window asks for an intrinsic size. A maximum alone lets
+            // ScrollView report zero height and hides every row below the header.
+            .frame(height: min(max(contentHeight, 1), 520))
+            .onPreferenceChange(MenuContentHeightKey.self) { height in
+                if height > 0 { contentHeight = height }
             }
         }
+        .alert("Action Failed", isPresented: Binding(
+            get: { services.actionError != nil || store.actionError != nil },
+            set: { if !$0 { services.actionError = nil; store.actionError = nil } }
+        )) {
+            Button("OK") { services.actionError = nil; store.actionError = nil }
+        } message: { Text(services.actionError ?? store.actionError ?? "") }
+    }
+}
+
+private struct MenuContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat { 0 }
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 
@@ -73,7 +134,9 @@ struct PortHeaderView: View {
     var updater: SPUUpdater
 
     private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "–"
+        return "\(version) (\(build))"
     }
 
     private var launchAtLogin: Binding<Bool> {
@@ -101,12 +164,13 @@ struct PortHeaderView: View {
             HStack(spacing: 2) {
                 if !store.entries.isEmpty {
                     HeaderControlButton(
-                        tooltip: nil,
+                        tooltip: "Stop eligible servers; simulators and shared backends stay running",
                         destructive: true,
                         action: store.killAllProcesses
                     ) {
-                        Text("Kill all")
+                        Text("Kill ports")
                     }
+                    .disabled(store.isStale || !store.terminatingPIDs.isEmpty || !store.entries.contains(where: \.canTerminate))
                 }
 
                 HeaderControlButton(
@@ -115,10 +179,12 @@ struct PortHeaderView: View {
                 ) {
                     HeaderIconLabel(systemName: "power")
                 }
+                .accessibilityLabel("Quit Port Menu")
 
                 Button { showMenu.toggle() } label: {
                     HeaderIconLabel(systemName: "ellipsis")
                 }
+                .accessibilityLabel("Settings")
                 .buttonStyle(HeaderButtonStyle(isHovered: menuHovered))
                 .background(FloatingTooltipAnchor(text: "Settings", isVisible: menuHovered && !showMenu))
                 .onHover { hovering in
@@ -138,6 +204,7 @@ struct PortHeaderView: View {
 
                         Divider()
 
+                        UpdateSettingsView(updater: updater)
                         CheckForUpdatesView(updater: updater)
                     }
                     .padding(12)
@@ -196,6 +263,7 @@ struct HeaderIconLabel: View {
 }
 
 struct HeaderButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var destructive: Bool = false
     var isHovered: Bool = false
 
@@ -206,7 +274,7 @@ struct HeaderButtonStyle: ButtonStyle {
             .padding(.vertical, 4)
             .background(Capsule().fill(backgroundColor(configuration)))
             .foregroundStyle(foregroundColor)
-            .scaleEffect(configuration.isPressed ? 0.92 : isHovered ? 1.04 : 1)
+            .scaleEffect(reduceMotion ? 1 : configuration.isPressed ? 0.92 : isHovered ? 1.04 : 1)
             .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
             .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isHovered)
     }
@@ -234,18 +302,27 @@ struct HeaderButtonStyle: ButtonStyle {
 
 struct PortEntryListView: View {
     @Environment(PortStore.self) private var store
+    @Environment(DevelopmentServices.self) private var services
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ForEach(Array(store.entries.enumerated()), id: \.element.id) { index, entry in
-            PortRow(entry: entry, showTopDivider: index > 0)
+        let groups = PortProjectGroup.make(entries: store.entries, localCanPorts: Set(services.routes.keys))
+        ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
+            PortRow(entry: group.primary, showTopDivider: index > 0, databases: group.databases)
+                .transition(reduceMotion ? .opacity : .asymmetric(
+                    insertion: .opacity,
+                    removal: .modifier(active: PortExitEffect(hidden: true), identity: PortExitEffect(hidden: false))
+                ))
         }
         .padding(.bottom, 6)
+        .transaction { if reduceMotion { $0.disablesAnimations = true; $0.animation = nil } }
     }
 }
 
 // MARK: - Empty State
 
 struct PortEmptyStateView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var rotation: Double = 0
 
     var body: some View {
@@ -263,9 +340,10 @@ struct PortEmptyStateView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)
-        .task {
+        .task(id: reduceMotion) {
+            guard !reduceMotion else { rotation = 0; return }
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(4))
+                do { try await Task.sleep(for: .seconds(4)) } catch { return }
                 withAnimation(.easeInOut(duration: 0.8)) {
                     rotation += 360
                 }
@@ -321,11 +399,14 @@ struct PortErrorStateView: View {
 // MARK: - Port Row
 
 struct PortRow: View {
+    @Environment(DevelopmentServices.self) private var services
     let entry: ActivePort
     let showTopDivider: Bool
+    var databases: [ActivePort] = []
     @Environment(PortStore.self) private var store
     @State private var isHovered = false
-    @State private var slidOut = false
+    @FocusState private var actionsFocused: Bool
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -337,26 +418,74 @@ struct PortRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Circle()
-                        .fill(.green)
+                        .fill(store.isStale ? Color.orange : Color.green)
                         .frame(width: 6, height: 6)
                         .offset(y: -1)
+                        .accessibilityHidden(true)
 
                     Text(entry.projectName)
                         .font(.system(.body, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.tail)
 
-                    Spacer()
+                    if let ownerLabel = entry.ownerLabel {
+                        Text(ownerLabel)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    } else if let url = services.routes[entry.port]?.first {
+                        Text(url.host() ?? url.absoluteString)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .help(url.absoluteString)
+                    }
+                    Spacer(minLength: 0)
 
                     HStack(spacing: 2) {
-                        HoverButton("Kill", role: .destructive) { killWithAnimation() }
-                        HoverButton("Open") {
-                            NSWorkspace.shared.open(entry.url)
+                        if !entry.canOpenInBrowser {
+                            RowActionButton(title: "Copy Address", systemImage: "doc.on.doc") {
+                                PortStore.copyToClipboard("localhost:\(entry.port)")
+                            }
+                        } else {
+                            RowActionButton(title: "Kill Server", systemImage: "stop.fill", destructive: true) {
+                                Task { await store.killProcess(entry) }
+                            }
+                            .disabled(!canKill)
+                            .help(entry.terminationRestriction ?? "Kill Server")
+                            if let urls = services.routes[entry.port], let url = urls.first {
+                                if urls.count == 1 {
+                                    RowActionButton(title: "Open LocalCan — " + url.absoluteString, systemImage: "network") {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                } else {
+                                    Menu {
+                                        ForEach(urls, id: \.self) { url in
+                                            Button(url.absoluteString) { NSWorkspace.shared.open(url) }
+                                        }
+                                    } label: {
+                                        Label("Open LocalCan", systemImage: "network")
+                                            .labelStyle(.iconOnly)
+                                            .font(.caption)
+                                            .frame(width: 12, height: 14)
+                                            .padding(.horizontal, 7)
+                                            .padding(.vertical, 4)
+                                    }
+                                    .menuStyle(.borderlessButton)
+                                    .menuIndicator(.hidden)
+                                    .buttonStyle(RowButtonStyle(destructive: false))
+                                    .fixedSize()
+                                    .help("Open LocalCan")
+                                }
+                            }
+                            RowActionButton(title: "Open localhost", systemImage: "arrow.up.forward.square") {
+                                NSWorkspace.shared.open(entry.url)
+                            }
                         }
                     }
-                    .opacity(isHovered ? 1 : 0)
-                    .scaleEffect(isHovered ? 1 : 0.85, anchor: .trailing)
-                    .offset(x: isHovered ? 0 : 6)
+                    .focused($actionsFocused)
+                    .modifier(RowActionReveal(isVisible: isHovered || actionsFocused || voiceOverEnabled))
                 }
 
                 HStack(spacing: 6) {
@@ -370,57 +499,65 @@ struct PortRow: View {
                         }
                     }
 
+                    if let start = entry.startTime {
+                        if !entry.branch.isEmpty { Text("·").foregroundStyle(.tertiary) }
+                        UptimeText(start: start)
+                            .foregroundStyle(.tertiary)
+                    }
+
                     Text(":\(String(entry.port))")
                         .fontDesign(.monospaced)
                         .foregroundStyle(.tertiary)
 
                     Spacer()
-
-                    if let start = entry.startTime {
-                        Text(formatUptime(from: start))
-                            .foregroundStyle(.tertiary)
-                    }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+                ForEach(databases) { database in
+                    PortDatabaseRow(entry: database)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .blur(radius: slidOut ? 8 : 0)
-        .opacity(slidOut ? 0 : 1)
-        .offset(x: slidOut ? 340 : 0)
         .contentShape(Rectangle())
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(.smooth(duration: 0.15)) {
                 isHovered = hovering
             }
         }
         .contextMenu {
-            Button("Copy URL") {
-                PortStore.copyToClipboard(entry.url.absoluteString)
+            if entry.canOpenInBrowser {
+                ForEach(services.routes[entry.port] ?? [], id: \.self) { url in
+                    Button("Copy " + url.absoluteString) { PortStore.copyToClipboard(url.absoluteString) }
+                }
+                Button("Copy localhost URL") {
+                    PortStore.copyToClipboard(entry.url.absoluteString)
+                }
+            } else {
+                Button("Copy Address") { PortStore.copyToClipboard("localhost:\(entry.port)") }
             }
-            Button("Copy Port") {
-                PortStore.copyToClipboard(String(entry.port))
+            Button("Copy Port") { PortStore.copyToClipboard(String(entry.port)) }
+            if entry.canOpenInBrowser {
+                Divider()
+                Button("Open in Browser") { NSWorkspace.shared.open(entry.url) }
+                Divider()
+                Button("Kill Server", role: .destructive) { Task { await store.killProcess(entry) } }
+                    .disabled(!canKill)
             }
-            Divider()
-            Button("Open in Browser") {
-                NSWorkspace.shared.open(entry.url)
-            }
-            Divider()
-            Button("Kill Server", role: .destructive) { killWithAnimation() }
         }
     }
 
-    private func killWithAnimation() {
-        store.killProcess(pid: entry.pid, port: entry.port)
-        withAnimation(.easeOut(duration: 0.3)) {
-            slidOut = true
-        }
-        Task {
-            try? await Task.sleep(for: .seconds(0.3))
-            store.removeEntry(port: entry.port)
-        }
+    private var canKill: Bool {
+        entry.canTerminate && !store.isStale && !store.terminatingPIDs.contains(entry.pid)
+    }
+}
+
+private struct PortExitEffect: ViewModifier {
+    var hidden: Bool
+    func body(content: Content) -> some View {
+        content.blur(radius: hidden ? 8 : 0).opacity(hidden ? 0 : 1).offset(x: hidden ? 340 : 0)
     }
 }
 
@@ -451,6 +588,7 @@ struct HoverButton: View {
 // MARK: - Row Button Style
 
 struct RowButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let destructive: Bool
     @State private var isHovered = false
 
@@ -458,7 +596,7 @@ struct RowButtonStyle: ButtonStyle {
         configuration.label
             .background(Capsule().fill(backgroundColor(configuration)))
             .foregroundStyle(foregroundColor(configuration))
-            .scaleEffect(configuration.isPressed ? 0.92 : isHovered ? 1.04 : 1)
+            .scaleEffect(reduceMotion ? 1 : configuration.isPressed ? 0.92 : isHovered ? 1.04 : 1)
             .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
             .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isHovered)
             .onHover { isHovered = $0 }
@@ -558,8 +696,8 @@ struct FloatingTooltipAnchor: NSViewRepresentable {
 
 // MARK: - Helpers
 
-func formatUptime(from start: Date) -> String {
-    let s = Int(Date().timeIntervalSince(start))
+func formatUptime(from start: Date, now: Date = Date()) -> String {
+    let s = Int(now.timeIntervalSince(start))
     if s < 60 { return "<1m" }
     let m = s / 60
     if m < 60 { return "\(m)m" }

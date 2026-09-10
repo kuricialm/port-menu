@@ -2,20 +2,8 @@
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
     <channel>
         <title>Port Menu</title>
-        <link>https://raw.githubusercontent.com/wieandteduard/port-menu/main/packaging/appcast.xml</link>
-        <description>Port Menu release feed</description>
+        <link>https://github.com/kuricialm/port-menu/releases/latest/download/appcast.xml</link>
+        <description>Fork release feed. The release workflow generates and signs the published appcast.</description>
         <language>en</language>
-        <item>
-            <title>Port Menu 0.8.10</title>
-            <pubDate>Sat, 11 Apr 2026 07:49:11 +0000</pubDate>
-            <sparkle:version>18</sparkle:version>
-            <sparkle:shortVersionString>0.8.10</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure
-                url="https://github.com/wieandteduard/port-menu/releases/download/v0.8.10/PortMenu-0.8.10.dmg"
-                sparkle:edSignature="H4BYb6M0irckRwrULBEL7mF1gnM8Ivt26vo7YUnqWAk4BSPGXq3M7OcFE41hCGymvLwddpCRN56/TO1xSlSrAg=="
-                length="1605223"
-                type="application/octet-stream"/>
-        </item>
     </channel>
 </rss>

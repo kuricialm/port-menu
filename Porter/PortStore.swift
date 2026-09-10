@@ -12,9 +12,17 @@ final class PortStore {
     var lastError: ScanError?
     var isScanning: Bool = false
     var lastDiagnostics: ScanDiagnostics?
+    var lastSuccessfulScan: Date?
+    var actionError: String?
+    var terminatingPIDs: Set<Int32> = []
 
-    @ObservationIgnored
-    @AppStorage("refreshInterval") private var storedInterval: Double = RefreshInterval.defaultInterval.rawValue
+    var isStale: Bool { lastError != nil }
+    var canKillPorts: Bool { !isStale && entries.contains { $0.canTerminate && !terminatingPIDs.contains($0.pid) } }
+
+    private var storedInterval: Double {
+        get { UserDefaults.standard.object(forKey: "refreshInterval") as? Double ?? RefreshInterval.defaultInterval.rawValue }
+        set { UserDefaults.standard.set(newValue, forKey: "refreshInterval") }
+    }
 
     var refreshInterval: RefreshInterval {
         get { RefreshInterval(rawValue: storedInterval) ?? .defaultInterval }
@@ -26,14 +34,16 @@ final class PortStore {
     }
 
     @ObservationIgnored private let scanner: PortScanning
+    @ObservationIgnored private let terminator: any ProcessTerminating
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var scanTask: Task<Void, Never>?
-    @ObservationIgnored private var recentlyKilled: [UInt16: Date] = [:]
+    @ObservationIgnored private var refreshAfterCurrentScan = false
     @ObservationIgnored private var sleepObserver: Any?
     @ObservationIgnored private var wakeObserver: Any?
 
-    init(scanner: PortScanning = LivePortScanner()) {
+    init(scanner: PortScanning = LivePortScanner(), terminator: any ProcessTerminating = LiveProcessTerminator()) {
         self.scanner = scanner
+        self.terminator = terminator
         setupLifecycleObservers()
         Log.lifecycle.info("PortStore initialized")
     }
@@ -66,14 +76,21 @@ final class PortStore {
 
     func refresh() {
         guard !isScanning else {
+            refreshAfterCurrentScan = true
             if Log.isVerbose { Log.store.debug("Refresh skipped — already scanning") }
             return
         }
 
         scanTask?.cancel()
+        isScanning = true
         scanTask = Task { [scanner] in
-            isScanning = true
-            defer { isScanning = false }
+            defer {
+                isScanning = false
+                if refreshAfterCurrentScan && !Task.isCancelled {
+                    refreshAfterCurrentScan = false
+                    refresh()
+                }
+            }
 
             let result = await scanner.scan()
 
@@ -83,9 +100,8 @@ final class PortStore {
             case .success(let ports, let diag):
                 lastError = nil
                 lastDiagnostics = diag
-                pruneRecentlyKilled()
-                let filtered = ports.filter { !recentlyKilled.keys.contains($0.port) }
-                applyUpdate(filtered)
+                lastSuccessfulScan = diag.timestamp
+                applyUpdate(ports)
 
             case .failure(let error, _):
                 lastError = error
@@ -114,43 +130,60 @@ final class PortStore {
 
     // MARK: - Actions
 
-    func killProcess(pid: Int32, port: UInt16) {
-        kill(pid, SIGTERM)
-        recentlyKilled[port] = Date()
-        Log.store.info("Killed PID \(pid) on port \(port)")
+    @discardableResult
+    func killProcess(_ entry: ActivePort) async -> Bool {
+        actionError = nil
+        return await requestTermination(entry)
     }
 
     func killAllProcesses() {
-        let currentEntries = entries
-        guard !currentEntries.isEmpty else { return }
-
-        for entry in currentEntries {
-            kill(entry.pid, SIGTERM)
-            recentlyKilled[entry.port] = Date()
-        }
-
-        Log.store.info("Killed \(currentEntries.count) processes")
-        withAnimation(.easeInOut(duration: 0.25)) {
-            entries = []
+        guard canKillPorts else { return }
+        var seenPIDs: Set<Int32> = []
+        let currentEntries = entries.filter { $0.canTerminate && seenPIDs.insert($0.pid).inserted }
+        actionError = nil
+        Task {
+            for entry in currentEntries {
+                await requestTermination(entry)
+            }
         }
     }
 
-    func removeEntry(port: UInt16) {
-        withAnimation(.easeInOut(duration: 0.3)) {
-            entries.removeAll { $0.port == port }
+    @discardableResult
+    private func requestTermination(_ entry: ActivePort) async -> Bool {
+        guard !terminatingPIDs.contains(entry.pid) else { return false }
+        guard !isStale else {
+            actionError = "Refresh the port list before stopping a server."
+            return false
+        }
+        guard entries.contains(where: { $0.id == entry.id && $0.processIdentity == entry.processIdentity }) else {
+            actionError = ProcessTerminationError.processChanged.localizedDescription
+            return false
+        }
+        guard entry.canTerminate else {
+            actionError = entry.terminationRestriction
+            return false
+        }
+
+        terminatingPIDs.insert(entry.pid)
+        defer {
+            terminatingPIDs.remove(entry.pid)
+            refresh()
+        }
+        do {
+            try await terminator.terminate(entry)
+            Log.store.info("Confirmed exit of PID \(entry.pid) on port \(entry.port)")
+            return true
+        } catch {
+            let message = "\(entry.projectName) :\(entry.port) — \(error.localizedDescription)"
+            actionError = [actionError, message].compactMap { $0 }.joined(separator: "\n")
+            Log.store.error("Stop failed: \(message)")
+            return false
         }
     }
 
     static func copyToClipboard(_ string: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(string, forType: .string)
-    }
-
-    // MARK: - Recently Killed Cleanup
-
-    private func pruneRecentlyKilled() {
-        let cutoff = Date().addingTimeInterval(-8)
-        recentlyKilled = recentlyKilled.filter { $0.value > cutoff }
     }
 
     // MARK: - Sleep / Wake
@@ -180,6 +213,7 @@ final class PortStore {
         timer?.invalidate()
         timer = nil
         scanTask?.cancel()
+        refreshAfterCurrentScan = false
     }
 
     private func handleWake() {
@@ -200,7 +234,9 @@ final class PortStore {
         Last error: \(lastError?.localizedDescription ?? "none")
         Refresh interval: \(refreshInterval.rawValue)s
         Last scan: \(lastDiagnostics?.summary ?? "none")
-        Recently killed: \(recentlyKilled.keys.sorted().map(String.init).joined(separator: ", "))
+        Stale port data: \(isStale)
+        Stopping PIDs: \(terminatingPIDs.sorted().map(String.init).joined(separator: ", "))
+        Last action error: \(actionError ?? "none")
         Entries: \(entries.map { ":\($0.port) (\($0.projectName))" }.joined(separator: ", "))
         ============================
         """
