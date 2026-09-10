@@ -7,6 +7,7 @@ struct RunningSimulator: Identifiable, Sendable {
     var deviceSetPath: String? = nil
     var dataPath: String? = nil
     var appNames: [String] = []
+    var startTime: Date? = nil
 
     var id: String { "\(deviceSetPath ?? "default")/\(udid)" }
     var isHostedByBitrig: Bool { deviceSetPath == Self.bitrigDeviceSet }
@@ -37,19 +38,44 @@ struct RunningSimulator: Identifiable, Sendable {
     // launchd_sim exposes the device's bootstrap plist, including custom device
     // sets used by embedded simulators. Preserve spaces in these filesystem paths.
     static func activeDeviceSets(in processes: String) -> [String] {
-        let suffix = "/data/var/run/launchd_bootstrap.plist"
-        var paths: Set<String> = []
-        for line in processes.split(separator: "\n") {
-            let command = line.trimmingCharacters(in: .whitespaces)
-            guard let separator = command.range(of: "launchd_sim "),
-                  separator.lowerBound == command.startIndex || String(command[..<separator.lowerBound]).hasSuffix("/"),
-                  command.hasSuffix(suffix) else { continue }
-            let path = String(command[separator.upperBound...].dropLast(suffix.count))
-            let device = URL(fileURLWithPath: path)
-            guard path.hasPrefix("/"), UUID(uuidString: device.lastPathComponent) != nil else { continue }
-            paths.insert(device.deletingLastPathComponent().standardizedFileURL.path)
+        let paths = processes.split(separator: "\n").compactMap { line -> String? in
+            guard let devicePath = bootstrapDevicePath(in: line.trimmingCharacters(in: .whitespaces)) else { return nil }
+            return URL(fileURLWithPath: devicePath).deletingLastPathComponent().path
         }
-        return paths.sorted()
+        return Array(Set(paths)).sorted()
+    }
+
+    /// Each boot creates a new launchd_sim process. Its start time measures the
+    /// running device session, without mistaking app launches or lastUsedAt for boots.
+    static func processSnapshot(_ output: String) -> (commands: String, bootTimes: [String: Date]) {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "EEE MMM d HH:mm:ss yyyy"
+        var commands: [String] = []
+        var bootTimes: [String: Date] = [:]
+        for line in output.split(separator: "\n") {
+            let fields = line.split(separator: " ", maxSplits: 5, omittingEmptySubsequences: true)
+            guard fields.count == 6 else { continue }
+            let command = fields[5].trimmingCharacters(in: .whitespaces)
+            commands.append(command)
+            if let devicePath = bootstrapDevicePath(in: command),
+               let started = formatter.date(from: fields.prefix(5).joined(separator: " ")) {
+                bootTimes[devicePath] = started
+            }
+        }
+        return (commands.joined(separator: "\n"), bootTimes)
+    }
+
+    private static func bootstrapDevicePath(in command: String) -> String? {
+        let suffix = "/data/var/run/launchd_bootstrap.plist"
+        guard let separator = command.range(of: "launchd_sim "),
+              separator.lowerBound == command.startIndex || String(command[..<separator.lowerBound]).hasSuffix("/"),
+              command.hasSuffix(suffix) else { return nil }
+        let path = String(command[separator.upperBound...].dropLast(suffix.count))
+        let device = URL(fileURLWithPath: path)
+        guard path.hasPrefix("/"), UUID(uuidString: device.lastPathComponent) != nil else { return nil }
+        return device.standardizedFileURL.path
     }
 
     func runningAppBundlePaths(in processes: String) -> [String] {
@@ -67,8 +93,18 @@ struct RunningSimulator: Identifiable, Sendable {
         let scanner = LivePortScanner()
         var warnings: [String] = []
         let processes: String
-        do { processes = try await scanner.runShell("/bin/ps", args: ["-axo", "command="], timeout: 5) }
-        catch { processes = ""; warnings.append("Running app names are unavailable.") }
+        let bootTimes: [String: Date]
+        do {
+            let output = try await scanner.runShell("/bin/ps", args: ["-axo", "lstart=,command="], timeout: 5,
+                                                     environment: ["LC_ALL": "C"])
+            let snapshot = processSnapshot(output)
+            processes = snapshot.commands
+            bootTimes = snapshot.bootTimes
+        } catch {
+            processes = ""
+            bootTimes = [:]
+            warnings.append("Running app names and simulator start times are unavailable.")
+        }
         let defaultPath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Developer/CoreSimulator/Devices").path
         var customSets = Set(activeDeviceSets(in: processes))
@@ -87,6 +123,10 @@ struct RunningSimulator: Identifiable, Sendable {
             }
         }
         for index in devices.indices {
+            let devicePath = devices[index].dataPath.map {
+                URL(fileURLWithPath: $0).deletingLastPathComponent().standardizedFileURL.path
+            } ?? (devices[index].deviceSetPath ?? defaultPath) + "/" + devices[index].udid
+            devices[index].startTime = bootTimes[devicePath]
             devices[index].appNames = devices[index].runningAppBundlePaths(in: processes).map { path in
                 let bundle = Bundle(path: path)
                 return bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String

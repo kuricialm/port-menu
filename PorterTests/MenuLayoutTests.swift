@@ -7,10 +7,10 @@ import Testing
 struct MenuLayoutTests {
     @Test @MainActor func menuHasVisibleContentBeforeGeometryMeasurement() throws {
         let store = PortStore(scanner: FakePortScanner(ports: [], delay: 0))
-        store.entries = [ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: nil)]
+        store.entries = [ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-840))]
         let services = DevelopmentServices()
         services.routes = [3210: [URL(string: "https://stock.local")!]]
-        services.simulators = [RunningSimulator(udid: "sample", name: "iPhone 17 Pro Max", runtime: "iOS 27.0", appNames: ["Piqly"])]
+        services.simulators = [RunningSimulator(udid: "sample", name: "iPhone 17 Pro Max", runtime: "iOS 27.0", appNames: ["Piqly"], startTime: Date().addingTimeInterval(-1980))]
         let updater = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
         let view = PortMainContentView(updater: updater.updater)
             .environment(services)
@@ -37,7 +37,7 @@ struct MenuLayoutTests {
         let store = PortStore(scanner: FakePortScanner(ports: [], delay: 0))
         let services = DevelopmentServices()
         services.routes = [3210: [URL(string: "https://stock.local")!]]
-        let entry = ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: nil)
+        let entry = ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-840))
         let host = NSHostingView(rootView: PortRow(entry: entry, showTopDivider: false)
             .environment(store).environment(services).frame(width: 340))
         #expect(host.fittingSize.height < 64)

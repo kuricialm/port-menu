@@ -60,9 +60,18 @@ private struct SimulatorRow: View {
                 .focused($actionsFocused)
                 .modifier(RowActionReveal(isVisible: isHovered || actionsFocused || voiceOverEnabled))
             }
-            Text(device.name + " • " + device.runtime)
-                .font(.caption).foregroundStyle(.secondary)
-                .lineLimit(1).truncationMode(.middle)
+            HStack(spacing: 6) {
+                Text(device.name + " • " + device.runtime)
+                    .lineLimit(1).truncationMode(.middle)
+                if let start = device.startTime {
+                    Text("·").foregroundStyle(.tertiary)
+                    UptimeText(start: start)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize()
+                }
+                Spacer(minLength: 0)
+            }
+            .font(.caption).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)

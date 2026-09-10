@@ -453,16 +453,17 @@ struct PortRow: View {
                         }
                     }
 
+                    if let start = entry.startTime {
+                        if !entry.branch.isEmpty { Text("·").foregroundStyle(.tertiary) }
+                        UptimeText(start: start)
+                            .foregroundStyle(.tertiary)
+                    }
+
                     Text(":\(String(entry.port))")
                         .fontDesign(.monospaced)
                         .foregroundStyle(.tertiary)
 
                     Spacer()
-
-                    if let start = entry.startTime {
-                        Text(formatUptime(from: start))
-                            .foregroundStyle(.tertiary)
-                    }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -644,8 +645,8 @@ struct FloatingTooltipAnchor: NSViewRepresentable {
 
 // MARK: - Helpers
 
-func formatUptime(from start: Date) -> String {
-    let s = Int(Date().timeIntervalSince(start))
+func formatUptime(from start: Date, now: Date = Date()) -> String {
+    let s = Int(now.timeIntervalSince(start))
     if s < 60 { return "<1m" }
     let m = s / 60
     if m < 60 { return "\(m)m" }
