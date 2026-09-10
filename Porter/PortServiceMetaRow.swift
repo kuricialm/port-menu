@@ -1,23 +1,21 @@
 import SwiftUI
 
-/// Caption line shared by a project's HTTP endpoint and any grouped database.
+/// Caption line shared by ports, grouped databases, and simulator devices.
 struct PortServiceMetaRow: View {
     var symbolName: String
     var title: String
     var startTime: Date?
-    var port: UInt16
+    var port: UInt16? = nil
 
     var body: some View {
         HStack(spacing: 6) {
             if !title.isEmpty {
-                HStack(spacing: 3) {
-                    Image(systemName: symbolName)
-                        .accessibilityHidden(true)
-                    Text(title)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Image(systemName: symbolName)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if let start = startTime {
@@ -26,9 +24,11 @@ struct PortServiceMetaRow: View {
                     .foregroundStyle(.tertiary)
             }
 
-            Text(":\(String(port))")
-                .fontDesign(.monospaced)
-                .foregroundStyle(.tertiary)
+            if let port {
+                Text(":\(String(port))")
+                    .fontDesign(.monospaced)
+                    .foregroundStyle(.tertiary)
+            }
 
             Spacer()
         }

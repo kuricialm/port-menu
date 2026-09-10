@@ -62,20 +62,11 @@ private struct SimulatorRow: View {
                 .focused($actionsFocused)
                 .modifier(RowActionReveal(isVisible: isHovered || actionsFocused || voiceOverEnabled))
             }
-            HStack(spacing: 6) {
-                Image(systemName: device.deviceSymbolName)
-                    .accessibilityHidden(true)
-                Text(device.name + " • " + device.runtime)
-                    .lineLimit(1).truncationMode(.middle)
-                if let start = device.startTime {
-                    Text("·").foregroundStyle(.tertiary)
-                    UptimeText(start: start)
-                        .foregroundStyle(.tertiary)
-                        .fixedSize()
-                }
-                Spacer(minLength: 0)
-            }
-            .font(.caption).foregroundStyle(.secondary)
+            PortServiceMetaRow(
+                symbolName: device.deviceSymbolName,
+                title: device.name + " • " + device.runtime,
+                startTime: device.startTime
+            )
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
