@@ -4,7 +4,7 @@ Port Menu uses Sparkle. Updating GitHub source alone does not update an installe
 
 ## Local candidate awaiting user acceptance
 
-**1.0.0** is the user-requested public version. Sparkle and the release workflow require a three-component version, so GitHub tags `v1.0.0` rather than `v1`. Grouped PostgreSQL captions match the `main` line, use `cylinder.split.1x2`, and share 6pt icon-to-text spacing with simulator captions. Merge this version into remote `main` after Bitrig publishes the feature branch. The last published release remains 0.18.19 until that merge completes.
+**1.0.1** is the public version to ship (`v1.0.1`, build 32). `v1.0.0` is blocked by an old March git tag with no GitHub Release; the user chose 1.0.1 instead of deleting that tag. The 1.0.0 Actions run notarized successfully but did not publish. The last published release remains 0.18.19 until 1.0.1 is merged to remote `main`.
 
 ## Normal workflow
 
