@@ -1,25 +1,16 @@
 import SwiftUI
 
-/// Shared title geometry keeps project and database rows visually identical.
+/// Project title with the live-status marker.
 struct ServiceRowTitle: View {
     var title: String
     var marker: Marker
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Group {
-                switch marker {
-                case .status(let color):
-                    Circle().fill(color)
-                case .database:
-                    Image(systemName: "cylinder")
-                        .resizable()
-                        .scaledToFit()
-                }
-            }
-            .frame(width: 6, height: 6)
-            .offset(y: -1)
-            .accessibilityHidden(true)
+            Circle().fill(marker.color)
+                .frame(width: 6, height: 6)
+                .offset(y: -1)
+                .accessibilityHidden(true)
 
             Text(title)
                 .font(.system(.body, weight: .medium))
@@ -31,6 +22,11 @@ struct ServiceRowTitle: View {
 
     enum Marker {
         case status(Color)
-        case database
+
+        var color: Color {
+            switch self {
+            case .status(let color): color
+            }
+        }
     }
 }

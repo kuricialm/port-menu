@@ -478,32 +478,12 @@ struct PortRow: View {
                     .modifier(RowActionReveal(isVisible: isHovered || actionsFocused || voiceOverEnabled))
                 }
 
-                HStack(spacing: 6) {
-                    if !entry.branch.isEmpty {
-                        HStack(spacing: 3) {
-                            Image(systemName: "network")
-                                .accessibilityHidden(true)
-                            Text(entry.branch)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-
-                    if let start = entry.startTime {
-                        if !entry.branch.isEmpty { Text("·").foregroundStyle(.tertiary) }
-                        UptimeText(start: start)
-                            .foregroundStyle(.tertiary)
-                    }
-
-                    Text(":\(String(entry.port))")
-                        .fontDesign(.monospaced)
-                        .foregroundStyle(.tertiary)
-
-                    Spacer()
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                PortServiceMetaRow(
+                    symbolName: "network",
+                    title: entry.branch,
+                    startTime: entry.startTime,
+                    port: entry.port
+                )
 
                 ForEach(databases) { database in
                     PortDatabaseRow(entry: database)

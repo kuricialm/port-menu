@@ -59,8 +59,10 @@ struct MenuLayoutTests {
 
         #expect(grouped.fittingSize.width == 340)
         let databaseContent = NSHostingView(rootView: PortDatabaseRow(entry: database).frame(width: 308))
-        // A port row adds eight points of padding above and below its content.
-        #expect(abs(databaseContent.fittingSize.height - (plain.fittingSize.height - 16)) < 1)
+        let branchMeta = NSHostingView(rootView: PortServiceMetaRow(
+            symbolName: "network", title: "main", startTime: Date(), port: 3210
+        ).frame(width: 308))
+        #expect(abs(databaseContent.fittingSize.height - branchMeta.fittingSize.height) < 1)
         #expect(abs(grouped.fittingSize.height - plain.fittingSize.height
                     - databaseContent.fittingSize.height - 6) < 1)
     }

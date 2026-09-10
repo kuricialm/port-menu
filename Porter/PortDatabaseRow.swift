@@ -8,28 +8,18 @@ struct PortDatabaseRow: View {
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                ServiceRowTitle(title: entry.ownerLabel ?? entry.projectName, marker: .database)
-                Spacer(minLength: 0)
-
-                RowActionButton(title: "Copy Database Address", systemImage: "doc.on.doc") {
-                    PortStore.copyToClipboard("localhost:\(entry.port)")
-                }
-                .focused($actionFocused)
-                .modifier(RowActionReveal(isVisible: isHovered || actionFocused || voiceOverEnabled))
+        PortServiceMetaRow(
+            symbolName: "cylinder.split.1x2",
+            title: entry.ownerLabel ?? entry.projectName,
+            startTime: entry.startTime,
+            port: entry.port
+        )
+        .overlay(alignment: .trailing) {
+            RowActionButton(title: "Copy Database Address", systemImage: "doc.on.doc") {
+                PortStore.copyToClipboard("localhost:\(entry.port)")
             }
-
-            HStack(spacing: 6) {
-                if let start = entry.startTime {
-                    UptimeText(start: start)
-                }
-                Text(":\(String(entry.port))")
-                    .fontDesign(.monospaced)
-                Spacer(minLength: 0)
-            }
-            .font(.caption)
-            .foregroundStyle(.tertiary)
+            .focused($actionFocused)
+            .modifier(RowActionReveal(isVisible: isHovered || actionFocused || voiceOverEnabled))
         }
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
@@ -37,5 +27,7 @@ struct PortDatabaseRow: View {
             Button("Copy Address") { PortStore.copyToClipboard("localhost:\(entry.port)") }
             Button("Copy Port") { PortStore.copyToClipboard(String(entry.port)) }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(entry.ownerLabel ?? entry.projectName)
     }
 }
