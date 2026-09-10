@@ -11,6 +11,7 @@ struct LiveProcessTerminator: ProcessTerminating {
 
     func terminate(_ entry: ActivePort) async throws {
         if entry.owner == .sharedDocker { throw ProcessTerminationError.sharedOwner }
+        if case .database(let engine) = entry.owner { throw ProcessTerminationError.databaseOwner(engine) }
         guard let identity = entry.processIdentity, identity.pid == entry.pid, entry.pid > 1 else {
             throw ProcessTerminationError.unverified
         }
@@ -22,8 +23,10 @@ struct LiveProcessTerminator: ProcessTerminating {
         guard let current = try control.snapshot(pid: entry.pid), current.identity == identity else {
             throw ProcessTerminationError.processChanged
         }
-        guard !LivePortScanner.isDockerProcess(current.name) else {
-            throw ProcessTerminationError.sharedOwner
+        switch LivePortScanner.owner(processName: current.name) {
+        case .sharedDocker: throw ProcessTerminationError.sharedOwner
+        case .database(let engine): throw ProcessTerminationError.databaseOwner(engine)
+        case .server: break
         }
         if current.hasExited { return }
         try control.sendTermination(pid: entry.pid)
@@ -73,6 +76,7 @@ struct SystemProcessControl: ProcessControl {
 
 enum ProcessTerminationError: Error, LocalizedError, Equatable {
     case sharedOwner
+    case databaseOwner(DatabaseEngine)
     case unverified
     case processChanged
     case noLongerListening
@@ -84,6 +88,8 @@ enum ProcessTerminationError: Error, LocalizedError, Equatable {
         switch self {
         case .sharedOwner:
             return "Manage this port in Docker; its process is shared by other containers."
+        case .databaseOwner(let engine):
+            return "Manage \(engine.displayName) with its database tools; this is not a web server."
         case .unverified:
             return "The server process could not be verified. Refresh and try again."
         case .processChanged:

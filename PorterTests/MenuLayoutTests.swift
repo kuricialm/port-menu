@@ -7,7 +7,10 @@ import Testing
 struct MenuLayoutTests {
     @Test @MainActor func menuHasVisibleContentBeforeGeometryMeasurement() throws {
         let store = PortStore(scanner: FakePortScanner(ports: [], delay: 0))
-        store.entries = [ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-840))]
+        store.entries = [
+            ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-840)),
+            ActivePort(port: 55432, pid: 99998, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-493_200), owner: .database(.postgreSQL))
+        ]
         let services = DevelopmentServices()
         services.routes = [3210: [URL(string: "https://stock.local")!]]
         services.simulators = [RunningSimulator(udid: "sample", name: "iPhone 17 Pro Max", runtime: "iOS 27.0", appNames: ["Piqly"], startTime: Date().addingTimeInterval(-1980))]

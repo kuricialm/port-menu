@@ -16,6 +16,9 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
         if owner == .sharedDocker {
             return "Manage this port in Docker; its process is shared by other containers."
         }
+        if case .database(let engine) = owner {
+            return "Manage \(engine.displayName) with its database tools; this is not a web server."
+        }
         if processIdentity?.pid != pid || pid <= 1 {
             return "The server process could not be verified. Refresh and try again."
         }
@@ -23,6 +26,14 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
     }
 
     var canTerminate: Bool { terminationRestriction == nil }
+    var canOpenInBrowser: Bool {
+        if case .database = owner { return false }
+        return true
+    }
+    var ownerLabel: String? {
+        if case .database(let engine) = owner { return engine.displayName }
+        return nil
+    }
 
     var url: URL {
         URL(string: "http://localhost:\(port)")!
@@ -48,6 +59,17 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
 enum PortOwner: Hashable, Sendable {
     case server
     case sharedDocker
+    case database(DatabaseEngine)
+}
+
+enum DatabaseEngine: Hashable, Sendable {
+    case postgreSQL
+
+    var displayName: String {
+        switch self {
+        case .postgreSQL: "PostgreSQL"
+        }
+    }
 }
 
 // MARK: - Scan Result

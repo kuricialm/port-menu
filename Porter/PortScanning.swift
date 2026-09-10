@@ -242,8 +242,7 @@ struct LivePortScanner: PortScanning {
                 branch: rootPath.flatMap { branches[$0] } ?? "",
                 startTime: processes[info.pid]?.identity.startTime ?? startTimes[info.pid],
                 processIdentity: processes[info.pid]?.identity,
-                owner: Self.isDockerProcess(info.processName) || Self.isDockerProcess(processes[info.pid]?.name ?? "")
-                    ? .sharedDocker : .server
+                owner: Self.owner(processName: info.processName, kernelName: processes[info.pid]?.name)
             )
         }
     }
@@ -298,6 +297,16 @@ struct LivePortScanner: PortScanning {
     static func isDockerProcess(_ name: String) -> Bool {
         let lower = name.lowercased()
         return lower.contains("docker") || lower.hasPrefix("com.dock") || lower.hasPrefix("vpnkit")
+    }
+
+    static func owner(processName: String, kernelName: String? = nil) -> PortOwner {
+        let names = [processName, kernelName].compactMap { $0 }
+        if names.contains(where: isDockerProcess) { return .sharedDocker }
+        // Include lsof's nine-character truncation of the legacy postmaster name.
+        if names.contains(where: { ["postgres", "postmaster", "postmaste"].contains($0.lowercased()) }) {
+            return .database(.postgreSQL)
+        }
+        return .server
     }
 
     static func isMeaningfulDirectoryName(_ name: String) -> Bool {

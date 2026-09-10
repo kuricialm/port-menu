@@ -46,3 +46,16 @@ Also corrected percent-encoded filesystem paths in Git repository discovery and 
 | Low | Complete live keyboard/VoiceOver, macOS 14/Intel runtime, launch-at-login, and watchOS/tvOS/visionOS acceptance on available devices/runtimes. |
 
 The release workflow runs only trusted main commits, advances version/build numbers, verifies signatures, and uploads into a draft before publishing. It resumes only a draft belonging to the same source SHA, refuses conflicting tags/public assets, skips an already released commit, and rejects older/diverged source. Feature-branch commits do not publish public app updates. No GitHub push, merge, public release, credential export, or repository-secret write was performed in this work.
+
+## Screenshot follow-up — 0.8.16 (24)
+
+The second Stock row in the user's screenshot was a real PostgreSQL listener on port 55432, exposed when valid high ports were included. Read-only `lsof` inspection confirmed that port 3210 belongs to Node and 55432 belongs to PostgreSQL. The database was misleadingly labeled only `stock` and inherited web-server controls.
+
+The row now reads **stock · PostgreSQL**. It remains counted as an active port, with its actual uptime, but offers only Copy Address/Copy Port. It cannot open a database TCP listener in a browser or be stopped by the ordinary row/bulk actions. The terminator also rejects a live PostgreSQL owner independently of the cached label. Classification is narrowly scoped to PostgreSQL/postmaster process names; it does not claim general database discovery or management.
+
+- **90 app tests passed** after the correction, including database classification, false-positive checks, cached/live termination protection, and bulk exclusion.
+- Both universal Release slices built successfully. The signed development build is **0.8.16 (24)**.
+- The actual production scanner classified Stock's real 3210 listener as a web server and its 55432 listener as protected PostgreSQL.
+- The three-row rendered fixture retains the same compact two-line layout and clearly distinguishes the database.
+- The corrected `ApplicationInstaller` was used to install the new build in Applications and confirmed the replacement launched before cleaning the previous copy. No monitored service was stopped. The separate earlier 0.8.14 backup remains available.
+- The automatic release configuration and seven passing release guard tests are unchanged. The first public release will have a higher build number than this installed bootstrap, allowing it to be offered through Sparkle once credentials are configured and the main workflow is live.

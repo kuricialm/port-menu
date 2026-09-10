@@ -12,7 +12,7 @@ Port Menu uses Sparkle. Updating GitHub source alone does not update an installe
 
 Sparkle can install downloaded updates when Port Menu quits. It may ask to relaunch or request macOS authorization; automatic updates do not bypass OS authorization. Stopping/relaunching Port Menu does not stop the servers or simulators it monitors.
 
-The project version/build remains the starting point. The first public release advances the build number beyond the local bootstrap build, so the newly installed 0.8.15 (23) can receive it through Sparkle. If it is already published or behind the last release, Actions automatically advances the patch and build numbers in the release artifact. Deliberately higher versions are preserved. The release title and app Settings show the actual version/build; release notes identify the source commit. Actions does not commit generated versions back to the branch.
+The project version/build remains the starting point. The first public release advances the build number beyond the local bootstrap build, so the newly installed 0.8.16 (24) can receive it through Sparkle. If it is already published or behind the last release, Actions automatically advances the patch and build numbers in the release artifact. Deliberately higher versions are preserved. The release title and app Settings show the actual version/build; release notes identify the source commit. Actions does not commit generated versions back to the branch.
 
 ## One-time setup still required
 
@@ -61,7 +61,7 @@ Both the workflow and release script reject a private key that does not match th
 
 The release feed is `https://github.com/kuricialm/port-menu/releases/latest/download/appcast.xml`. The checked-in `packaging/appcast.xml` is an empty reference template, not a live published feed. Before the first release exists, manual checks can report a feed/download error; no upstream fallback is used.
 
-Install a build containing the fork channel once through Applications; 0.8.15 (23) is already installed on this Mac. Existing 0.8.14 and older builds still contain the upstream feed/key, so they cannot bootstrap the new fork channel automatically. Subsequent fork releases can update through Sparkle.
+Install a build containing the fork channel once through Applications; 0.8.16 (24) is already installed on this Mac. Existing 0.8.14 and older builds still contain the upstream feed/key, so they cannot bootstrap the new fork channel automatically. Subsequent fork releases can update through Sparkle.
 
 The bundle identifier `eduard.Porter` is deliberately retained for this existing installation so onboarding, launch-at-login identity, and other preferences remain associated with the same app. The fork replaces the upstream app at `/Applications/Port Menu.app`; simultaneous upstream/fork installation is not supported. The feed and EdDSA key are fork-owned, with signature checking required before extraction. Changing the bundle identifier later requires a separate migration.
 

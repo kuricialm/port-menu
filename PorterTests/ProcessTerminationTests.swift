@@ -34,6 +34,26 @@ struct ProcessTerminationTests {
         #expect(control.signalCount == 0)
     }
 
+    @Test func protectsDatabaseOwnerBeforeAnySignal() async {
+        let control = TestProcessControl(snapshot: .init(identity: identity, name: "postgres"))
+        let database = port(owner: .database(.postgreSQL))
+        #expect(!database.canTerminate)
+        #expect(!database.canOpenInBrowser)
+        #expect(database.ownerLabel == "PostgreSQL")
+        await #expect(throws: ProcessTerminationError.databaseOwner(.postgreSQL)) {
+            try await LiveProcessTerminator(control: control).terminate(database)
+        }
+        #expect(control.signalCount == 0)
+    }
+
+    @Test func protectsLiveDatabaseEvenWhenCachedRowSaidServer() async {
+        let control = TestProcessControl(snapshot: .init(identity: identity, name: "postgres"))
+        await #expect(throws: ProcessTerminationError.databaseOwner(.postgreSQL)) {
+            try await LiveProcessTerminator(control: control).terminate(port())
+        }
+        #expect(control.signalCount == 0)
+    }
+
     @Test func rejectsReusedPIDBeforeSignaling() async {
         var replacement = identity
         replacement.startMicroseconds += 1
@@ -114,14 +134,17 @@ struct PortTerminationStateTests {
         #expect(store.entries == [restarted])
     }
 
-    @Test @MainActor func bulkTerminationSkipsSharedOwnersAndSignalsEachPIDOnce() async {
+    @Test @MainActor func bulkTerminationSkipsSharedAndDatabaseOwnersAndSignalsEachPIDOnce() async {
         let terminator = TestTerminator()
         let sharedIdentity = ProcessIdentity(pid: 42_001, startSeconds: 1, startMicroseconds: 0)
         let shared = ActivePort(port: 4000, pid: sharedIdentity.pid, projectName: "Docker", branch: "",
                                 startTime: sharedIdentity.startTime, processIdentity: sharedIdentity, owner: .sharedDocker)
         let secondPort = ActivePort(port: 5173, pid: entry.pid, projectName: "test", branch: "main",
                                     startTime: entry.startTime, processIdentity: entry.processIdentity)
-        let ports = [entry, secondPort, shared]
+        let databaseIdentity = ProcessIdentity(pid: 42_002, startSeconds: 1, startMicroseconds: 0)
+        let database = ActivePort(port: 55432, pid: databaseIdentity.pid, projectName: "test", branch: "main",
+                                  startTime: databaseIdentity.startTime, processIdentity: databaseIdentity, owner: .database(.postgreSQL))
+        let ports = [entry, secondPort, shared, database]
         let store = PortStore(scanner: FakePortScanner(ports: ports, delay: 0), terminator: terminator)
         store.entries = ports
         store.killAllProcesses()
@@ -131,6 +154,7 @@ struct PortTerminationStateTests {
         }
         #expect(await terminator.calls == [entry.id])
         #expect(store.entries.contains(shared))
+        #expect(store.entries.contains(database))
     }
 
     @Test @MainActor func failedScanMarksRetainedDataStaleAndBlocksTermination() async {

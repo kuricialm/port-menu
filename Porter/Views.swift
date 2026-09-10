@@ -420,12 +420,12 @@ struct PortRow: View {
                         .offset(y: -1)
                         .accessibilityHidden(true)
 
-                    Text(entry.projectName)
+                    Text(entry.projectName + (entry.ownerLabel.map { " · " + $0 } ?? ""))
                         .font(.system(.body, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.tail)
 
-                    if let url = services.routes[entry.port]?.first {
+                    if entry.canOpenInBrowser, let url = services.routes[entry.port]?.first {
                         Text(url.host() ?? url.absoluteString)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -436,38 +436,44 @@ struct PortRow: View {
                     Spacer(minLength: 0)
 
                     HStack(spacing: 2) {
-                        RowActionButton(title: "Kill Server", systemImage: "stop.fill", destructive: true) {
-                            Task { await store.killProcess(entry) }
-                        }
-                        .disabled(!canKill)
-                        .help(entry.terminationRestriction ?? "Kill Server")
-                        if let urls = services.routes[entry.port], let url = urls.first {
-                            if urls.count == 1 {
-                                RowActionButton(title: "Open LocalCan — " + url.absoluteString, systemImage: "network") {
-                                    NSWorkspace.shared.open(url)
-                                }
-                            } else {
-                                Menu {
-                                    ForEach(urls, id: \.self) { url in
-                                        Button(url.absoluteString) { NSWorkspace.shared.open(url) }
-                                    }
-                                } label: {
-                                    Label("Open LocalCan", systemImage: "network")
-                                        .labelStyle(.iconOnly)
-                                        .font(.caption)
-                                        .frame(width: 12, height: 14)
-                                        .padding(.horizontal, 7)
-                                        .padding(.vertical, 4)
-                                }
-                                .menuStyle(.borderlessButton)
-                                .menuIndicator(.hidden)
-                                .buttonStyle(RowButtonStyle(destructive: false))
-                                .fixedSize()
-                                .help("Open LocalCan")
+                        if !entry.canOpenInBrowser {
+                            RowActionButton(title: "Copy Address", systemImage: "doc.on.doc") {
+                                PortStore.copyToClipboard("localhost:\(entry.port)")
                             }
-                        }
-                        RowActionButton(title: "Open localhost", systemImage: "arrow.up.forward.square") {
-                            NSWorkspace.shared.open(entry.url)
+                        } else {
+                            RowActionButton(title: "Kill Server", systemImage: "stop.fill", destructive: true) {
+                                Task { await store.killProcess(entry) }
+                            }
+                            .disabled(!canKill)
+                            .help(entry.terminationRestriction ?? "Kill Server")
+                            if let urls = services.routes[entry.port], let url = urls.first {
+                                if urls.count == 1 {
+                                    RowActionButton(title: "Open LocalCan — " + url.absoluteString, systemImage: "network") {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                } else {
+                                    Menu {
+                                        ForEach(urls, id: \.self) { url in
+                                            Button(url.absoluteString) { NSWorkspace.shared.open(url) }
+                                        }
+                                    } label: {
+                                        Label("Open LocalCan", systemImage: "network")
+                                            .labelStyle(.iconOnly)
+                                            .font(.caption)
+                                            .frame(width: 12, height: 14)
+                                            .padding(.horizontal, 7)
+                                            .padding(.vertical, 4)
+                                    }
+                                    .menuStyle(.borderlessButton)
+                                    .menuIndicator(.hidden)
+                                    .buttonStyle(RowButtonStyle(destructive: false))
+                                    .fixedSize()
+                                    .help("Open LocalCan")
+                                }
+                            }
+                            RowActionButton(title: "Open localhost", systemImage: "arrow.up.forward.square") {
+                                NSWorkspace.shared.open(entry.url)
+                            }
                         }
                     }
                     .focused($actionsFocused)
@@ -510,22 +516,24 @@ struct PortRow: View {
             }
         }
         .contextMenu {
-            ForEach(services.routes[entry.port] ?? [], id: \.self) { url in
-                Button("Copy " + url.absoluteString) { PortStore.copyToClipboard(url.absoluteString) }
+            if entry.canOpenInBrowser {
+                ForEach(services.routes[entry.port] ?? [], id: \.self) { url in
+                    Button("Copy " + url.absoluteString) { PortStore.copyToClipboard(url.absoluteString) }
+                }
+                Button("Copy localhost URL") {
+                    PortStore.copyToClipboard(entry.url.absoluteString)
+                }
+            } else {
+                Button("Copy Address") { PortStore.copyToClipboard("localhost:\(entry.port)") }
             }
-            Button("Copy localhost URL") {
-                PortStore.copyToClipboard(entry.url.absoluteString)
+            Button("Copy Port") { PortStore.copyToClipboard(String(entry.port)) }
+            if entry.canOpenInBrowser {
+                Divider()
+                Button("Open in Browser") { NSWorkspace.shared.open(entry.url) }
+                Divider()
+                Button("Kill Server", role: .destructive) { Task { await store.killProcess(entry) } }
+                    .disabled(!canKill)
             }
-            Button("Copy Port") {
-                PortStore.copyToClipboard(String(entry.port))
-            }
-            Divider()
-            Button("Open in Browser") {
-                NSWorkspace.shared.open(entry.url)
-            }
-            Divider()
-            Button("Kill Server", role: .destructive) { Task { await store.killProcess(entry) } }
-                .disabled(!canKill)
         }
     }
 

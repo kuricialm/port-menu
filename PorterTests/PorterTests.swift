@@ -146,9 +146,20 @@ struct LsofParserTests {
 
 struct ActivePortTests {
 
+    @Test func classifiesPostgreSQLUsingEitherProcessNameSource() {
+        #expect(LivePortScanner.owner(processName: "postgres") == .database(.postgreSQL))
+        #expect(LivePortScanner.owner(processName: "postmaste") == .database(.postgreSQL))
+        #expect(LivePortScanner.owner(processName: "postmaste", kernelName: "postmaster") == .database(.postgreSQL))
+        #expect(LivePortScanner.owner(processName: "node", kernelName: "postgres") == .database(.postgreSQL))
+        #expect(LivePortScanner.owner(processName: "postgres-tool") == .server)
+        #expect(LivePortScanner.owner(processName: "node") == .server)
+    }
+
     @Test func urlConstruction() {
         let port = ActivePort(port: 3000, pid: 123, projectName: "test", branch: "main", startTime: nil)
         #expect(port.url.absoluteString == "http://localhost:3000")
+        #expect(port.canOpenInBrowser)
+        #expect(port.ownerLabel == nil)
     }
 
     @Test func compositeIdentity() {
