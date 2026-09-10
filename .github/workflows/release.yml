@@ -30,10 +30,6 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
       TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
       DEVELOPER_ID_APP: ${{ vars.DEVELOPER_ID_APP }}
-      OUTPUT_DIR: ${{ runner.temp }}/portmenu-release
-      PACKAGES_DIR: ${{ runner.temp }}/portmenu-packages
-      SPARKLE_KEY_FILE: ${{ runner.temp }}/portmenu-sparkle.key
-      NOTARY_API_KEY_FILE: ${{ runner.temp }}/portmenu-notary.p8
       NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
       # Team API keys need an issuer. Individual API keys must omit it (Xcode 26+).
       NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
@@ -41,6 +37,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Configure temporary paths
+        run: |
+          printf '%s\n' \
+            "OUTPUT_DIR=$RUNNER_TEMP/portmenu-release" \
+            "PACKAGES_DIR=$RUNNER_TEMP/portmenu-packages" \
+            "SPARKLE_KEY_FILE=$RUNNER_TEMP/portmenu-sparkle.key" \
+            "NOTARY_API_KEY_FILE=$RUNNER_TEMP/portmenu-notary.p8" >> "$GITHUB_ENV"
       - name: Check one-time release setup
         env:
           CERTIFICATE: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
