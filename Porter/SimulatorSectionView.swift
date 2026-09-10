@@ -63,6 +63,8 @@ private struct SimulatorRow: View {
                 .modifier(RowActionReveal(isVisible: isHovered || actionsFocused || voiceOverEnabled))
             }
             HStack(spacing: 6) {
+                Image(systemName: device.deviceSymbolName)
+                    .accessibilityHidden(true)
                 Text(device.name + " • " + device.runtime)
                     .lineLimit(1).truncationMode(.middle)
                 if let start = device.startTime {
@@ -85,4 +87,5 @@ private struct SimulatorRow: View {
         }
         .disabled(services.busy.contains(device.id))
     }
+
 }

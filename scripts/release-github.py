@@ -65,10 +65,10 @@ def publish(version, build):
         raise ValueError('Verified release assets are missing')
     if not release:
         notes = Path(os.environ['RUNNER_TEMP'])/'portmenu-notes.md'
-        notes.write_text(f'Port Menu {version} ({build})\n\nBuilt from commit {SHA}. '
+        notes.write_text(f'Port Menu {version}\n\nBuilt from commit {SHA}. '
                          'Signed with Developer ID and notarized.\n')
         gh('release', 'create', tag, '--repo', REPO, '--target', SHA, '--draft',
-           '--title', f'Port Menu {version} ({build})', '--notes-file', str(notes))
+           '--title', f'Port Menu {version}', '--notes-file', str(notes))
     # A private draft can safely replace partial uploads. Never modify public assets.
     gh('release', 'upload', tag, '--repo', REPO, '--clobber', *map(str, assets))
     gh('release', 'edit', tag, '--repo', REPO, '--draft=false', '--latest')

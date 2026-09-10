@@ -30,4 +30,24 @@ struct SimulatorDiscoveryTests {
         let device = RunningSimulator(udid: "device", name: "iPhone", runtime: "iOS 27.0", deviceSetPath: RunningSimulator.bitrigDeviceSet)
         #expect(device.isHostedByBitrig)
     }
+
+    @Test func renamedTabletUsesItsDeviceTypeInsteadOfItsDisplayName() throws {
+        let json = #"{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-27-0":[{"udid":"tablet","name":"iPhone comparison","state":"Booted","deviceTypeIdentifier":"com.apple.CoreSimulator.SimDeviceType.iPad-Pro-13-inch-M4-16GB"}]}}"#
+        let device = try #require(RunningSimulator.decode(Data(json.utf8)).first)
+        #expect(device.deviceSymbolName == "ipad")
+    }
+
+    @Test(arguments: [
+        ("Custom watch", "watchOS 27.0", "applewatch"),
+        ("Living room", "tvOS 27.0", "appletv"),
+        ("Spatial test", "visionOS 27.0", "visionpro"),
+        ("Spatial test", "xrOS 2.0", "visionpro"),
+        ("iPhone 17 Pro Max", "iOS 27.0", "iphone"),
+        ("iPad Pro", "iOS 27.0", "ipad"),
+        ("Unknown device", "Unknown runtime", "display")
+    ])
+    func simulatorSymbolUsesRuntimeOrDeviceName(name: String, runtime: String, symbol: String) {
+        let device = RunningSimulator(udid: "device", name: name, runtime: runtime)
+        #expect(device.deviceSymbolName == symbol)
+    }
 }

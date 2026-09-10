@@ -11,7 +11,7 @@
 ## Version identification
 
 - For every batch of app changes published by Bitrig, increment the patch component of `MARKETING_VERSION` and increment `CURRENT_PROJECT_VERSION` before the final build and commit. Keep Debug/Release and test targets consistent. Never reuse a version for a changed app build that the user will install. Documentation-only changes do not require an app release.
-- Show version and build in the app's Settings popover. Report the exact version in the handoff and distinguish a successful build from a verified installation in `/Applications/Port Menu.app`.
+- Show only the release version in the app's Settings popover and public release title (starting at 0.18.19). Keep incrementing the internal build number for Sparkle and macOS. Report the exact release version in the handoff and distinguish a successful build from a verified installation in `/Applications/Port Menu.app`.
 
 ## Distribution
 

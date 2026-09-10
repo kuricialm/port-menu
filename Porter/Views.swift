@@ -134,9 +134,7 @@ struct PortHeaderView: View {
     var updater: SPUUpdater
 
     private var appVersion: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "–"
-        return "\(version) (\(build))"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
     }
 
     private var launchAtLogin: Binding<Bool> {
@@ -491,7 +489,8 @@ struct PortRow: View {
                 HStack(spacing: 6) {
                     if !entry.branch.isEmpty {
                         HStack(spacing: 3) {
-                            Image(systemName: "arrow.triangle.branch")
+                            Image(systemName: "network")
+                                .accessibilityHidden(true)
                             Text(entry.branch)
                                 .lineLimit(1)
                                 .truncationMode(.middle)

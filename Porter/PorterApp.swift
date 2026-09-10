@@ -35,10 +35,8 @@ struct PorterApp: App {
                 .environment(services)
         } label: {
             HStack(spacing: 3) {
-                Image(systemName: activeCount == 0
-                      ? "square.fill"
-                      : "circle.fill")
-                    .font(.system(size: 5.5))
+                Image(systemName: menuBarSymbol)
+                    .font(.system(size: 13))
                     .foregroundStyle(statusColor)
                 Text(activeCount, format: .number)
                     .fontDesign(.monospaced)
@@ -61,6 +59,13 @@ struct PorterApp: App {
 
     private var activeCount: Int {
         store.entries.count + services.simulators.count
+    }
+
+    private var menuBarSymbol: String {
+        if #available(macOS 15.0, *) {
+            return "powerplug.portrait.fill"
+        }
+        return "powerplug.fill"
     }
 
     private var statusDescription: String {

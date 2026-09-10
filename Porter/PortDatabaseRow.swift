@@ -9,7 +9,13 @@ struct PortDatabaseRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Label(entry.ownerLabel ?? entry.projectName, systemImage: "cylinder")
+            Image(systemName: "cylinder")
+                .font(.system(size: 10, weight: .medium))
+                .frame(width: 6, height: 6)
+                .offset(y: -1)
+                .accessibilityHidden(true)
+
+            Text(entry.ownerLabel ?? entry.projectName)
                 .font(.system(.body, weight: .medium))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
@@ -32,7 +38,6 @@ struct PortDatabaseRow: View {
             .modifier(RowActionReveal(isVisible: isHovered || actionFocused || voiceOverEnabled))
         }
         .font(.caption)
-        .padding(.leading, 12)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .contextMenu {
