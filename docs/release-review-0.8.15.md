@@ -75,3 +75,5 @@ Two processes from successive installations were observed at the same Applicatio
 - The Account Holder issued a Developer ID Application certificate for team `D2WEKYD65B`, and the certificate/private key were imported into login Keychain. Signing exports are kept outside Git in protected storage.
 
 Current remaining priorities: **High** — save GitHub release credentials, complete Apple notarization, publish the signed feed, and verify an actual upgrade; these uploads are pending the explicit approval requested by automatic review. **Medium** — supported exact-project activation in Bitrig and Bitrig's warning classification. **Low** — live accessibility/hover, older macOS/Intel, login, and other simulator runtime acceptance. No confirmed Critical finding remains in the reviewed scope.
+
+A separate local **Developer ID** archive/export of 0.8.17 (25) also passed strict app/nested-Sparkle signature validation, both universal architecture checks, hardened runtime, secure timestamp, and entitlement inspection. This distribution artifact is prepared but **not notarized or published**; the installed live-tested app remains the Bitrig development-signed build.
