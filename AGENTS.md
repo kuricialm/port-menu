@@ -6,7 +6,7 @@
 - Use Bitrig's build tool for app builds. Unit verification: `xcodebuild test -project Porter.xcodeproj -scheme Porter -destination 'platform=macOS,arch=arm64' -only-testing:PorterTests`.
 - LocalCan integration is read-only. Never create, rewrite, or remove saved routes.
 - Simulator discovery is read-only; shut down only the specific device selected by the user.
-- Bitrig manages publishing. Work on a feature branch, commit changes, and do not push manually.
+- Bitrig manages publishing. Work on a feature branch, commit changes, and do not push manually. Leave the feature branch selected at the end of the turn: Bitrig does not publish the default branch. Verify the feature commit exists on GitHub before merging its pull request into remote main; a local merge into main does not publish a release.
 
 ## Version identification
 

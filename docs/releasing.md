@@ -4,8 +4,8 @@ Port Menu uses Sparkle. Updating GitHub source alone does not update an installe
 
 ## Normal workflow
 
-1. Finish app changes on a feature branch. Bitrig publishes commits; do not push manually from Bitrig.
-2. Merge the reviewed changes into `main`.
+1. Finish app changes on a feature branch and leave it selected. Bitrig publishes feature branches after the turn; it does not publish the default branch. Do not push manually from Bitrig.
+2. Verify the feature commit exists on GitHub, then merge its reviewed pull request into remote `main`. Do not substitute a local merge into `main`: Bitrig explicitly leaves those commits unpublished.
 3. GitHub Actions runs the tests, builds a universal Mac app, signs it with Developer ID, notarizes it with Apple, and creates a signed DMG and Sparkle feed.
 4. Actions uploads all assets to a draft GitHub release, then publishes them together. Failed validation or uploads never expose a partial update through the feed.
 5. Port Menu checks the fork feed hourly by default, verifies the signed feed and download, and downloads/installs updates using Sparkle. Users can change both update preferences in Settings or choose Check for Updates… immediately.
@@ -27,6 +27,12 @@ The official Sparkle 2.9 CLI detected the update from the installed 0.8.17 (25),
 The initial hosted run failed workflow validation because `runner.temp` is unavailable in job-level environment expressions. The fix initializes these paths in a runner step and passes official Actionlint 1.7.12. An incompatible `lipo -verify_arch` invocation was also replaced with exact architecture-token checks. The complete corrected release script passed locally for the notarized 0.8.18 typography build and the final 0.18.19 build, including app/DMG notarization, stapling, Gatekeeper, and signed-feed validation. The corrected hosted run and its next public release remain to be observed after Bitrig publishes the main-branch merge; they are not reported as passed yet.
 
 The 0.18.19 source also rejects ordinary duplicate launches synchronously, before SwiftUI creates a menu scene. A live duplicate exited while the installed 0.8.18 stayed running alone; visibility remained true and no preferences changed. The final 0.18.19 update is reserved for the user’s manual Check for Updates test. See the [current release review](release-review-0.18.19.md).
+
+### Publication follow-up
+
+The next manual check still reported 0.8.17 because the new commits had not reached GitHub. Bitrig’s workspace notice explicitly says it does not publish a repository’s default branch. The prior local main merge therefore did not trigger a release. The tested commits are now on `publish-update`, preserving a branch Bitrig can publish. Verify remote publication and merge there before reporting the update available.
+
+Bitrig rewrote the app commit from `cbe93f341d7ad58f04711fee3780b8854e5804e7` to `801d0d8`; their complete Git trees are identical. The later `220ec4e` commit changes only release documentation. The prepared 0.18.19 app/DMG were rechecked: signatures, stapled tickets, Gatekeeper and universal architectures passed. This source equivalence permits publishing the already-notarized package once the corresponding source is actually on GitHub; it does not justify tagging older code as the release.
 
 Configured in this repository's **Settings → Secrets and variables → Actions**:
 
