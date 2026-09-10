@@ -50,7 +50,7 @@ private struct SimulatorRow: View {
                     .lineLimit(1).truncationMode(.tail)
                 Spacer(minLength: 0)
                 HStack(spacing: 2) {
-                    RowActionButton(title: "Shut Down " + device.name, systemImage: "power", destructive: true) {
+                    RowActionButton(title: "Shut Down " + device.name, systemImage: "stop.fill", destructive: true) {
                         services.perform(device, shutdown: true)
                     }
                     RowActionButton(title: device.isHostedByBitrig ? "Open Bitrig" : "Show Simulator",
@@ -62,20 +62,11 @@ private struct SimulatorRow: View {
                 .focused($actionsFocused)
                 .modifier(RowActionReveal(isVisible: isHovered || actionsFocused || voiceOverEnabled))
             }
-            HStack(spacing: 6) {
-                Image(systemName: device.deviceSymbolName)
-                    .accessibilityHidden(true)
-                Text(device.name + " • " + device.runtime)
-                    .lineLimit(1).truncationMode(.middle)
-                if let start = device.startTime {
-                    Text("·").foregroundStyle(.tertiary)
-                    UptimeText(start: start)
-                        .foregroundStyle(.tertiary)
-                        .fixedSize()
-                }
-                Spacer(minLength: 0)
-            }
-            .font(.caption).foregroundStyle(.secondary)
+            PortServiceMetaRow(
+                symbolName: device.deviceSymbolName,
+                title: device.name + " • " + device.runtime,
+                startTime: device.startTime
+            )
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -83,7 +74,7 @@ private struct SimulatorRow: View {
         .onHover { isHovered = $0 }
         .contextMenu {
             Button(device.isHostedByBitrig ? "Open Bitrig" : "Show Simulator", systemImage: "arrow.up.forward.square") { services.perform(device, shutdown: false) }
-            Button("Shut Down", systemImage: "power", role: .destructive) { services.perform(device, shutdown: true) }
+            Button("Shut Down", systemImage: "stop.fill", role: .destructive) { services.perform(device, shutdown: true) }
         }
         .disabled(services.busy.contains(device.id))
     }

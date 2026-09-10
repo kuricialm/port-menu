@@ -47,7 +47,7 @@ struct MenuLayoutTests {
         #expect(host.fittingSize.height > 35)
     }
 
-    @Test @MainActor func groupedDatabaseAddsOnlyOneCompactLine() {
+    @Test @MainActor func groupedDatabaseUsesTheSameTwoLineContentHeight() {
         let store = PortStore(scanner: FakePortScanner(ports: [], delay: 0))
         let services = DevelopmentServices()
         let server = ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: Date())
@@ -58,7 +58,12 @@ struct MenuLayoutTests {
             .environment(store).environment(services).frame(width: 340))
 
         #expect(grouped.fittingSize.width == 340)
-        #expect(grouped.fittingSize.height - plain.fittingSize.height <= 30)
-        #expect(grouped.fittingSize.height - plain.fittingSize.height >= 20)
+        let databaseContent = NSHostingView(rootView: PortDatabaseRow(entry: database).frame(width: 308))
+        let branchMeta = NSHostingView(rootView: PortServiceMetaRow(
+            symbolName: "network", title: "main", startTime: Date(), port: 3210
+        ).frame(width: 308))
+        #expect(abs(databaseContent.fittingSize.height - branchMeta.fittingSize.height) < 1)
+        #expect(abs(grouped.fittingSize.height - plain.fittingSize.height
+                    - databaseContent.fittingSize.height - 6) < 1)
     }
 }

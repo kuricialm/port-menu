@@ -2,6 +2,10 @@
 
 Port Menu uses Sparkle. Updating GitHub source alone does not update an installed app: a release must be compiled, signed, notarized, and published first. The workflow in `.github/workflows/release.yml` performs that work for app changes on `main`, and can also be started manually on `main`.
 
+## Local candidate awaiting user acceptance
+
+**0.18.20** is a local test candidate on `fix-row-proportions`. It shares the main/database title component, bounds the database icon to the same marker size, moves database metadata to a second line, and uses the filled-square simulator stop icon. The Bitrig build, three layout tests, rendered fixture review, and copied-app signature check passed. The user explicitly requested local testing before release: do not merge or publish this candidate until they approve it. The public release remains 0.18.19.
+
 ## Normal workflow
 
 1. Finish app changes on a feature branch and leave it selected. Bitrig publishes feature branches after the turn; it does not publish the default branch. Do not push manually from Bitrig.
@@ -24,15 +28,17 @@ All six encrypted repository secrets and both public variables below are saved i
 
 The official Sparkle 2.9 CLI detected the update from the installed 0.8.17 (25), downloaded it from the public feed, verified it, installed 0.8.17 (26), and relaunched one app instance. A subsequent probe reported no newer update instead of a retrieval error. Onboarding and menu visibility were retained; automatic checks/install remain enabled with a 3,600-second interval. This exercises Sparkle's real replacement path, not the app's manual button or a timed hourly check.
 
-The initial hosted run failed workflow validation because `runner.temp` is unavailable in job-level environment expressions. The fix initializes these paths in a runner step and passes official Actionlint 1.7.12. An incompatible `lipo -verify_arch` invocation was also replaced with exact architecture-token checks. The complete corrected release script passed locally for the notarized 0.8.18 typography build and the final 0.18.19 build, including app/DMG notarization, stapling, Gatekeeper, and signed-feed validation. The corrected hosted run and its next public release remain to be observed after Bitrig publishes the main-branch merge; they are not reported as passed yet.
+The initial hosted run failed workflow validation because `runner.temp` is unavailable in job-level environment expressions. The fix initializes these paths in a runner step and passes official Actionlint 1.7.12. An incompatible `lipo -verify_arch` invocation was also replaced with exact architecture-token checks. The complete corrected release script passed locally for the notarized 0.8.18 typography build and the final 0.18.19 build, including app/DMG notarization, stapling, Gatekeeper, and signed-feed validation.
+
+The first corrected [hosted release run](https://github.com/kuricialm/port-menu/actions/runs/34536377365) then passed and published [Port Menu 0.18.19](https://github.com/kuricialm/port-menu/releases/tag/v0.18.19), internal build 29, from immutable main commit `eb04433c0e87777ee8b23e6c5eff656ad28e3371`. Tests, signing, app/DMG notarization, feed validation, and publication all completed in GitHub Actions. The published DMG, appcast, and checksum file were downloaded independently and their hashes matched GitHub's asset digests. The official Sparkle CLI's read-only probe confirmed the update from the installed app; it did not install it.
 
 The 0.18.19 source also rejects ordinary duplicate launches synchronously, before SwiftUI creates a menu scene. A live duplicate exited while the installed 0.8.18 stayed running alone; visibility remained true and no preferences changed. The final 0.18.19 update is reserved for the user’s manual Check for Updates test. See the [current release review](release-review-0.18.19.md).
 
 ### Publication follow-up
 
-The next manual check still reported 0.8.17 because the new commits had not reached GitHub. Bitrig’s workspace notice explicitly says it does not publish a repository’s default branch. The prior local main merge therefore did not trigger a release. The tested commits are now on `publish-update`, preserving a branch Bitrig can publish. Verify remote publication and merge there before reporting the update available.
+The next manual check still reported 0.8.17 because the new commits had not reached GitHub. Bitrig’s workspace notice explicitly says it does not publish a repository’s default branch. The prior local main merge therefore did not trigger a release. Moving the tested commits to `publish-update` let Bitrig publish them. After verifying the exact feature commit and app/build trees, [pull request #2](https://github.com/kuricialm/port-menu/pull/2) merged into remote main at `eb04433c0e87777ee8b23e6c5eff656ad28e3371`. That merge triggered the successful hosted 0.18.19 release above. GitHub Actions was the only publisher; no local publisher raced its release.
 
-Bitrig rewrote the app commit from `cbe93f341d7ad58f04711fee3780b8854e5804e7` to `801d0d8`; their complete Git trees are identical. The later `220ec4e` commit changes only release documentation. The prepared 0.18.19 app/DMG were rechecked: signatures, stapled tickets, Gatekeeper and universal architectures passed. This source equivalence permits publishing the already-notarized package once the corresponding source is actually on GitHub; it does not justify tagging older code as the release.
+Bitrig rewrote the app commit from `cbe93f341d7ad58f04711fee3780b8854e5804e7` to `801d0d8`; their complete Git trees are identical. The later `220ec4e` commit changes only release documentation. The prepared local 0.18.19 app/DMG were rechecked: signatures, stapled tickets, Gatekeeper and universal architectures passed. These remained local validation artifacts. The public package was built separately by GitHub Actions from the verified remote main merge, with its own artifact hashes.
 
 Configured in this repository's **Settings → Secrets and variables → Actions**:
 

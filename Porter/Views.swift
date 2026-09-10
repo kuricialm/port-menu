@@ -415,16 +415,8 @@ struct PortRow: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Circle()
-                        .fill(store.isStale ? Color.orange : Color.green)
-                        .frame(width: 6, height: 6)
-                        .offset(y: -1)
-                        .accessibilityHidden(true)
-
-                    Text(entry.projectName)
-                        .font(.system(.body, weight: .medium))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                    ServiceRowTitle(title: entry.projectName,
+                                    marker: .status(store.isStale ? .orange : .green))
 
                     if let ownerLabel = entry.ownerLabel {
                         Text(ownerLabel)
@@ -486,32 +478,12 @@ struct PortRow: View {
                     .modifier(RowActionReveal(isVisible: isHovered || actionsFocused || voiceOverEnabled))
                 }
 
-                HStack(spacing: 6) {
-                    if !entry.branch.isEmpty {
-                        HStack(spacing: 3) {
-                            Image(systemName: "network")
-                                .accessibilityHidden(true)
-                            Text(entry.branch)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-
-                    if let start = entry.startTime {
-                        if !entry.branch.isEmpty { Text("·").foregroundStyle(.tertiary) }
-                        UptimeText(start: start)
-                            .foregroundStyle(.tertiary)
-                    }
-
-                    Text(":\(String(entry.port))")
-                        .fontDesign(.monospaced)
-                        .foregroundStyle(.tertiary)
-
-                    Spacer()
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                PortServiceMetaRow(
+                    symbolName: "network",
+                    title: entry.branch,
+                    startTime: entry.startTime,
+                    port: entry.port
+                )
 
                 ForEach(databases) { database in
                     PortDatabaseRow(entry: database)
