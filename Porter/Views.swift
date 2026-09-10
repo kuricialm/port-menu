@@ -34,7 +34,7 @@ struct PortListView: View {
                 OnboardingView()
             }
         }
-        .frame(width: 480)
+        .frame(width: 340)
         .animation(.easeInOut(duration: 0.25), value: hasCompletedOnboarding)
     }
 }
@@ -45,7 +45,8 @@ struct PortMainContentView: View {
     @Environment(PortStore.self) private var store
     var updater: SPUUpdater
 
-    @State private var services = DevelopmentServices()
+    @State var services = DevelopmentServices()
+    @State private var contentHeight: CGFloat = 280
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -70,8 +71,19 @@ struct PortMainContentView: View {
                     SimulatorSectionView()
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: MenuContentHeightKey.self, value: geometry.size.height)
+                    }
+                }
             }
-            .frame(maxHeight: 520)
+            // A menu window asks for an intrinsic size. A maximum alone lets
+            // ScrollView report zero height and hides every row below the header.
+            .frame(height: min(max(contentHeight, 1), 520))
+            .onPreferenceChange(MenuContentHeightKey.self) { height in
+                if height > 0 { contentHeight = height }
+            }
         }
         .environment(services)
         .task {
@@ -87,6 +99,14 @@ struct PortMainContentView: View {
         )) {
             Button("OK") { services.actionError = nil }
         } message: { Text(services.actionError ?? "") }
+    }
+}
+
+private struct MenuContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat { 0 }
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 

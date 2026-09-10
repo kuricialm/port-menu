@@ -12,4 +12,4 @@ Show booted Apple Simulator devices across installed runtimes, including iOS, wa
 
 ## Presentation
 
-Separate Ports and Simulators sections using the existing English language, typography, and controls. Keep long lists scrollable and actions accessible without hover.
+Separate Ports and Simulators sections using the existing English language, typography, and controls. Keep the original 340-point menu width, size the menu height to its contents, cap the scroll area at 520 points, and keep actions accessible without hover.
