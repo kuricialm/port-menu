@@ -242,7 +242,8 @@ struct LivePortScanner: PortScanning {
                 branch: rootPath.flatMap { branches[$0] } ?? "",
                 startTime: processes[info.pid]?.identity.startTime ?? startTimes[info.pid],
                 processIdentity: processes[info.pid]?.identity,
-                owner: Self.owner(processName: info.processName, kernelName: processes[info.pid]?.name)
+                owner: Self.owner(processName: info.processName, kernelName: processes[info.pid]?.name),
+                projectRoot: gitRoot
             )
         }
     }

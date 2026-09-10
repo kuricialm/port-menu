@@ -11,22 +11,25 @@ private final class UpdaterDelegate: NSObject, SPUUpdaterDelegate {
 struct PorterApp: App {
     @State private var store = PortStore.shared
     @State private var services = DevelopmentServices()
+    @State private var instance = ApplicationInstanceController.shared
     private let updaterController: SPUStandardUpdaterController
     private let updaterDelegate = UpdaterDelegate()
 
     init() {
-        let isTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-            || NSClassFromString("XCTestCase") != nil
         updaterController = SPUStandardUpdaterController(
-            startingUpdater: !isTestHost,
+            startingUpdater: false,
             updaterDelegate: updaterDelegate,
             userDriverDelegate: nil
         )
-        moveToApplicationsIfNeeded()
+        let updater = updaterController
+        ApplicationInstanceController.shared.start {
+            updater.startUpdater()
+            moveToApplicationsIfNeeded()
+        }
     }
 
     var body: some Scene {
-        MenuBarExtra {
+        MenuBarExtra(isInserted: $instance.isPrimaryInstance) {
             PortListView(updater: updaterController.updater)
                 .environment(store)
                 .environment(services)

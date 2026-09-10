@@ -302,11 +302,13 @@ struct HeaderButtonStyle: ButtonStyle {
 
 struct PortEntryListView: View {
     @Environment(PortStore.self) private var store
+    @Environment(DevelopmentServices.self) private var services
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ForEach(Array(store.entries.enumerated()), id: \.element.id) { index, entry in
-            PortRow(entry: entry, showTopDivider: index > 0)
+        let groups = PortProjectGroup.make(entries: store.entries, localCanPorts: Set(services.routes.keys))
+        ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
+            PortRow(entry: group.primary, showTopDivider: index > 0, databases: group.databases)
                 .transition(reduceMotion ? .opacity : .asymmetric(
                     insertion: .opacity,
                     removal: .modifier(active: PortExitEffect(hidden: true), identity: PortExitEffect(hidden: false))
@@ -400,6 +402,7 @@ struct PortRow: View {
     @Environment(DevelopmentServices.self) private var services
     let entry: ActivePort
     let showTopDivider: Bool
+    var databases: [ActivePort] = []
     @Environment(PortStore.self) private var store
     @State private var isHovered = false
     @FocusState private var actionsFocused: Bool
@@ -420,12 +423,17 @@ struct PortRow: View {
                         .offset(y: -1)
                         .accessibilityHidden(true)
 
-                    Text(entry.projectName + (entry.ownerLabel.map { " · " + $0 } ?? ""))
+                    Text(entry.projectName)
                         .font(.system(.body, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.tail)
 
-                    if entry.canOpenInBrowser, let url = services.routes[entry.port]?.first {
+                    if let ownerLabel = entry.ownerLabel {
+                        Text(ownerLabel)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    } else if let url = services.routes[entry.port]?.first {
                         Text(url.host() ?? url.absoluteString)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -505,6 +513,10 @@ struct PortRow: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+                ForEach(databases) { database in
+                    PortDatabaseRow(entry: database)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)

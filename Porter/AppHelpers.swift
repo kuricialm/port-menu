@@ -14,7 +14,7 @@ func moveToApplicationsIfNeeded() {
           !sourcePath.contains("DerivedData"),
           !sourcePath.hasPrefix("/tmp/"),
           !sourcePath.hasPrefix("/private/tmp/"),
-          sourceURL.standardizedFileURL != destinationURL.standardizedFileURL else { return }
+          sourceURL.resolvingSymlinksInPath().path != destinationURL.resolvingSymlinksInPath().path else { return }
 
     let alert = NSAlert()
     alert.messageText = "Install to Applications Folder?"

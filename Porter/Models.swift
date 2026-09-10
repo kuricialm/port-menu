@@ -7,6 +7,7 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
     let port: UInt16
     let pid: Int32
     let projectName: String
+    let projectRoot: URL?
     let branch: String
     let startTime: Date?
     let processIdentity: ProcessIdentity?
@@ -40,7 +41,7 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
     }
 
     init(port: UInt16, pid: Int32, projectName: String, branch: String, startTime: Date?,
-         processIdentity: ProcessIdentity? = nil, owner: PortOwner = .server) {
+         processIdentity: ProcessIdentity? = nil, owner: PortOwner = .server, projectRoot: URL? = nil) {
         if let processIdentity {
             self.id = "\(port)-\(pid)-\(processIdentity.startSeconds)-\(processIdentity.startMicroseconds)"
         } else {
@@ -49,6 +50,7 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
         self.port = port
         self.pid = pid
         self.projectName = projectName
+        self.projectRoot = projectRoot?.standardizedFileURL.resolvingSymlinksInPath()
         self.branch = branch
         self.startTime = startTime
         self.processIdentity = processIdentity

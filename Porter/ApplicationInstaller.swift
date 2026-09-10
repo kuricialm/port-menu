@@ -14,7 +14,7 @@ struct ApplicationInstaller {
     /// Returns a retained backup path only if post-launch cleanup failed.
     /// The source bundle is intentionally never removed.
     func install(from source: URL, to destination: URL) async throws -> URL? {
-        guard source.standardizedFileURL != destination.standardizedFileURL else {
+        guard source.resolvingSymlinksInPath().path != destination.resolvingSymlinksInPath().path else {
             throw InstallationError.invalidSource
         }
         let sourceAccess = source.startAccessingSecurityScopedResource()
@@ -92,9 +92,24 @@ struct ApplicationInstaller {
     }
 
     private static func launchApplication(at url: URL) async throws {
+        let handoff = try InstallationHandoff.create(destination: url, parentPID: ProcessInfo.processInfo.processIdentifier)
+        defer { handoff.cleanUp() }
         let configuration = NSWorkspace.OpenConfiguration()
+        configuration.arguments = handoff.launchArguments
+        // A replacement must launch its new executable, rather than re-open
+        // the still-running source. It stays hidden until the source exits.
         configuration.createsNewApplicationInstance = true
         let application = try await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        while !handoff.isAcknowledged(by: application.processIdentifier) {
+            guard !application.isTerminated, ContinuousClock.now < deadline else {
+                // Only this install's newly launched copy is stopped. A failed
+                // handshake must not become active after rollback.
+                application.terminate()
+                throw InstallationError.launchFailed
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
         guard !application.isTerminated else { throw InstallationError.launchFailed }
     }
 }

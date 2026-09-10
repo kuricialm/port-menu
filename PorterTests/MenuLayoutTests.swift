@@ -8,8 +8,8 @@ struct MenuLayoutTests {
     @Test @MainActor func menuHasVisibleContentBeforeGeometryMeasurement() throws {
         let store = PortStore(scanner: FakePortScanner(ports: [], delay: 0))
         store.entries = [
-            ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-840)),
-            ActivePort(port: 55432, pid: 99998, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-493_200), owner: .database(.postgreSQL))
+            ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-840), projectRoot: URL(filePath: "/work/stock")),
+            ActivePort(port: 55432, pid: 99998, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-493_200), owner: .database(.postgreSQL), projectRoot: URL(filePath: "/work/stock"))
         ]
         let services = DevelopmentServices()
         services.routes = [3210: [URL(string: "https://stock.local")!]]
@@ -45,5 +45,20 @@ struct MenuLayoutTests {
             .environment(store).environment(services).frame(width: 340))
         #expect(host.fittingSize.height < 64)
         #expect(host.fittingSize.height > 35)
+    }
+
+    @Test @MainActor func groupedDatabaseAddsOnlyOneCompactLine() {
+        let store = PortStore(scanner: FakePortScanner(ports: [], delay: 0))
+        let services = DevelopmentServices()
+        let server = ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: Date())
+        let database = ActivePort(port: 55432, pid: 99998, projectName: "stock", branch: "main", startTime: Date(), owner: .database(.postgreSQL))
+        let plain = NSHostingView(rootView: PortRow(entry: server, showTopDivider: false)
+            .environment(store).environment(services).frame(width: 340))
+        let grouped = NSHostingView(rootView: PortRow(entry: server, showTopDivider: false, databases: [database])
+            .environment(store).environment(services).frame(width: 340))
+
+        #expect(grouped.fittingSize.width == 340)
+        #expect(grouped.fittingSize.height - plain.fittingSize.height <= 30)
+        #expect(grouped.fittingSize.height - plain.fittingSize.height >= 20)
     }
 }

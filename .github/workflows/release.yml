@@ -35,6 +35,7 @@ jobs:
       SPARKLE_KEY_FILE: ${{ runner.temp }}/portmenu-sparkle.key
       NOTARY_API_KEY_FILE: ${{ runner.temp }}/portmenu-notary.p8
       NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+      # Team API keys need an issuer. Individual API keys must omit it (Xcode 26+).
       NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -50,7 +51,7 @@ jobs:
           python3 - <<'PY'
           import os
           required = ['TEAM_ID','DEVELOPER_ID_APP','CERTIFICATE','CERTIFICATE_PASSWORD',
-                      'SPARKLE_KEY','NOTARY_KEY','NOTARY_KEY_ID','NOTARY_ISSUER_ID']
+                      'SPARKLE_KEY','NOTARY_KEY','NOTARY_KEY_ID']
           missing = [key for key in required if not os.environ.get(key)]
           if missing:
               raise SystemExit('Release setup incomplete: '+', '.join(missing)+'. See docs/releasing.md.')

@@ -12,11 +12,13 @@ Port Menu uses Sparkle. Updating GitHub source alone does not update an installe
 
 Sparkle can install downloaded updates when Port Menu quits. It may ask to relaunch or request macOS authorization; automatic updates do not bypass OS authorization. Stopping/relaunching Port Menu does not stop the servers or simulators it monitors.
 
-The project version/build remains the starting point. The first public release advances the build number beyond the local bootstrap build, so the newly installed 0.8.16 (24) can receive it through Sparkle. If it is already published or behind the last release, Actions automatically advances the patch and build numbers in the release artifact. Deliberately higher versions are preserved. The release title and app Settings show the actual version/build; release notes identify the source commit. Actions does not commit generated versions back to the branch.
+The project version/build remains the starting point. The first public release advances the build number beyond the local bootstrap build, so the installed bootstrap build can receive it through Sparkle. If it is already published or behind the last release, Actions automatically advances the patch and build numbers in the release artifact. Deliberately higher versions are preserved. The release title and app Settings show the actual version/build; release notes identify the source commit. Actions does not commit generated versions back to the branch.
 
-## One-time setup still required
+## Activation status — 10 September 2026
 
-As checked on 10 September 2026, this Mac has an Apple Development certificate, but no Developer ID Application identity. Bitrig's GitHub App credentials cannot access Actions secrets (GitHub returned HTTP 403). No public release or in-app update installation has been performed. The workflow stops with a named missing-setting error until configured.
+Developer ID Application signing is now configured in this Mac's login Keychain: `Developer ID Application: Emad Alghamdi (D2WEKYD65B)`, certificate `F4GK7QPHN3`, expiring 11 September 2031. The existing Bitrig Apple API credential successfully authenticated to Apple's notarization service with its configured issuer. Keep that issuer: this verified credential is a team key, not an individual key.
+
+The encrypted certificate export and existing fork Sparkle key are prepared in protected local storage. GitHub Actions credentials, Apple's artifact submission, and a published in-app update still require completion. Automatic approval review requested explicit destination/scope approval before uploading the credentials or app artifact. Bitrig's GitHub App credentials cannot manage Actions secrets (HTTP 403); use the owner's authenticated repository settings. No GitHub secret has been saved and no app has been submitted for notarization at this checkpoint. The workflow stops with a named missing-setting error until configured.
 
 In this repository's **Settings → Secrets and variables → Actions**, configure:
 
@@ -29,7 +31,7 @@ In this repository's **Settings → Secrets and variables → Actions**, configu
 | Secret | `SPARKLE_PRIVATE_KEY` | The dedicated fork Sparkle key export described below |
 | Secret | `NOTARY_API_PRIVATE_KEY` | Contents of the Apple notarization API `.p8` key |
 | Secret | `NOTARY_KEY_ID` | Apple API key identifier |
-| Secret | `NOTARY_ISSUER_ID` | Apple API issuer identifier |
+| Secret | `NOTARY_ISSUER_ID` | Required for team keys, including the verified Bitrig credential; omit for individual API keys on Xcode 26+ |
 
 Use a Developer ID Application certificate for direct Mac distribution, not an Apple Development, App Store, or installer certificate. Have the account holder create it if the Apple account role requires that. The notarization key must belong to the matching Apple team and have permission to submit apps. Do not paste private keys or certificate passwords in chat or commit them to Git. GitHub's hosted runner imports them into temporary protected files/keychain, and the cleanup step removes them even after failure.
 
@@ -61,7 +63,7 @@ Both the workflow and release script reject a private key that does not match th
 
 The release feed is `https://github.com/kuricialm/port-menu/releases/latest/download/appcast.xml`. The checked-in `packaging/appcast.xml` is an empty reference template, not a live published feed. Before the first release exists, manual checks can report a feed/download error; no upstream fallback is used.
 
-Install a build containing the fork channel once through Applications; 0.8.16 (24) is already installed on this Mac. Existing 0.8.14 and older builds still contain the upstream feed/key, so they cannot bootstrap the new fork channel automatically. Subsequent fork releases can update through Sparkle.
+Install a build containing the fork channel once through Applications; 0.8.17 (25) is installed and its single-instance behavior has been verified on this Mac. Existing 0.8.14 and older builds still contain the upstream feed/key, so they cannot bootstrap the new fork channel automatically. Subsequent fork releases can update through Sparkle.
 
 The bundle identifier `eduard.Porter` is deliberately retained for this existing installation so onboarding, launch-at-login identity, and other preferences remain associated with the same app. The fork replaces the upstream app at `/Applications/Port Menu.app`; simultaneous upstream/fork installation is not supported. The feed and EdDSA key are fork-owned, with signature checking required before extraction. Changing the bundle identifier later requires a separate migration.
 
@@ -75,7 +77,7 @@ DEVELOPER_ID_APP="Developer ID Application: Your Name (TEAMID)" \
 ./scripts/release-macos.sh
 ```
 
-The script can also use `SPARKLE_KEY_FILE`, `NOTARY_API_KEY_FILE`, `NOTARY_KEY_ID`, and `NOTARY_ISSUER_ID`, as the workflow does. `PACKAGES_DIR`, `OUTPUT_DIR`, and the paired `RELEASE_VERSION`/`RELEASE_BUILD` are optional overrides. It creates a unique temporary work directory and preserves it for diagnosis, rather than deleting existing output or mounted volumes.
+The script can also use `SPARKLE_KEY_FILE`, `NOTARY_API_KEY_FILE`, `NOTARY_KEY_ID`, and `NOTARY_ISSUER_ID`, as the workflow does. Team API keys require the issuer; individual API keys omit it and require Xcode 26 or later. The script rejects unsupported older notarization tools. `PACKAGES_DIR`, `OUTPUT_DIR`, and the paired `RELEASE_VERSION`/`RELEASE_BUILD` are optional overrides. It creates a unique temporary work directory and preserves it for diagnosis, rather than deleting existing output or mounted volumes.
 
 Release validation includes signature verification, both arm64/x86_64 slices, notarization/stapling, Gatekeeper assessment, signing-key identity, fork-owned feed/download URLs, and matching app/feed version numbers. Keep dSYMs for crash reports.
 

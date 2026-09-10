@@ -56,13 +56,23 @@ codesign --verify --deep --strict "$APP_PATH"
 lipo "$APP_PATH/Contents/MacOS/Port Menu" -verify_arch arm64 x86_64
 [[ $(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$APP_PATH/Contents/Info.plist") == "$EXPECTED_KEY" ]] || exit 1
 [[ $(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$APP_PATH/Contents/Info.plist") == "$FEED_URL" ]] || exit 1
-notarize() {
-  if [[ -n "${NOTARY_API_KEY_FILE:-}" ]]; then
-    : "${NOTARY_KEY_ID:?Set NOTARY_KEY_ID}" "${NOTARY_ISSUER_ID:?Set NOTARY_ISSUER_ID}"
-    xcrun notarytool submit "$1" --key "$NOTARY_API_KEY_FILE" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait
+NOTARY_AUTH_ARGS=(--keychain-profile "${NOTARY_PROFILE:-PortMenuNotary}")
+if [[ -n "${NOTARY_API_KEY_FILE:-}" ]]; then
+  : "${NOTARY_KEY_ID:?Set NOTARY_KEY_ID}"
+  NOTARY_AUTH_ARGS=(--key "$NOTARY_API_KEY_FILE" --key-id "$NOTARY_KEY_ID")
+  if [[ -n "${NOTARY_ISSUER_ID:-}" ]]; then
+    NOTARY_AUTH_ARGS+=(--issuer "$NOTARY_ISSUER_ID")
   else
-    xcrun notarytool submit "$1" --keychain-profile "${NOTARY_PROFILE:-PortMenuNotary}" --wait
+    # Individual keys use the user's identity; supplying an issuer causes HTTP 401.
+    NOTARY_HELP=$(xcrun notarytool submit --help)
+    [[ "$NOTARY_HELP" == *'Individual API Keys'* ]] || {
+      print -u2 'Individual notarization API keys require notarytool from Xcode 26 or later.'
+      exit 1
+    }
   fi
+fi
+notarize() {
+  xcrun notarytool submit "$1" "${NOTARY_AUTH_ARGS[@]}" --wait
 }
 /usr/bin/ditto -c -k --keepParent "$APP_PATH" "$WORK_DIR/notarize.zip"
 notarize "$WORK_DIR/notarize.zip"

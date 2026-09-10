@@ -59,3 +59,19 @@ The row now reads **stock · PostgreSQL**. It remains counted as an active port,
 - The three-row rendered fixture retains the same compact two-line layout and clearly distinguishes the database.
 - The corrected `ApplicationInstaller` was used to install the new build in Applications and confirmed the replacement launched before cleaning the previous copy. No monitored service was stopped. The separate earlier 0.8.14 backup remains available.
 - The automatic release configuration and seven passing release guard tests are unchanged. The first public release will have a higher build number than this installed bootstrap, allowing it to be offered through Sparkle once credentials are configured and the main workflow is live.
+
+
+## Grouping and installation follow-up — 0.8.17 (25)
+
+PostgreSQL now appears as a compact subordinate line beneath the web server sharing its canonical Git root. Its secondary caption matches LocalCan's style, with no dot before the database label. Its address and uptime remain visible; databases without a matching web server remain standalone. Grouping never relies on project names alone, and all active endpoints still contribute to the menu count.
+
+Two processes from successive installations were observed at the same Applications path. The older process was closed normally. Installation path comparisons now normalize directory URLs, and a per-user process lock plus startup coordination prevents a second active menu or updater. An explicit installation handoff waits for the source to exit. Only Port Menu processes were closed during validation.
+
+- **103 app tests across 23 suites passed**, including canonical project grouping, layout, installer failures, process locks, and handoff validation.
+- **0.8.17 (25) is installed** at `/Applications/Port Menu.app`; signature validation passed. A deliberately launched duplicate exited, leaving the installed process as the sole lock owner. The live test exercised production installation with a CLI launch callback; in-app handoff has unit coverage but was not exercised live.
+- Bitrig's build log reports **BUILD SUCCEEDED**, despite its wrapper treating the known metadata/destination warnings as failure.
+- The rendered Stock/PostgreSQL/Piqly fixture retains the 340-point width and original primary row styling. Native menu-app inspection still times out, so live hover/VoiceOver acceptance is not claimed.
+- **7 release metadata checks** and **5 notarization authentication argument cases** passed. Both team and Xcode 26+ individual API keys are supported; the actual configured Bitrig key authenticated successfully with its issuer.
+- The Account Holder issued a Developer ID Application certificate for team `D2WEKYD65B`, and the certificate/private key were imported into login Keychain. Signing exports are kept outside Git in protected storage.
+
+Current remaining priorities: **High** — save GitHub release credentials, complete Apple notarization, publish the signed feed, and verify an actual upgrade; these uploads are pending the explicit approval requested by automatic review. **Medium** — supported exact-project activation in Bitrig and Bitrig's warning classification. **Low** — live accessibility/hover, older macOS/Intel, login, and other simulator runtime acceptance. No confirmed Critical finding remains in the reviewed scope.
