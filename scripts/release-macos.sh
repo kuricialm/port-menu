@@ -53,7 +53,13 @@ PY
 xcodebuild -exportArchive -archivePath "$ARCHIVE_PATH" -exportPath "$WORK_DIR/export" \
   -exportOptionsPlist "$WORK_DIR/ExportOptions.plist"
 codesign --verify --deep --strict "$APP_PATH"
-lipo "$APP_PATH/Contents/MacOS/Port Menu" -verify_arch arm64 x86_64
+APP_ARCHITECTURES=$(lipo -archs "$APP_PATH/Contents/MacOS/Port Menu")
+for REQUIRED_ARCH in arm64 x86_64; do
+  case " $APP_ARCHITECTURES " in
+    *" $REQUIRED_ARCH "*) ;;
+    *) print -u2 "Release app is missing required architecture: $REQUIRED_ARCH"; exit 1 ;;
+  esac
+done
 [[ $(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$APP_PATH/Contents/Info.plist") == "$EXPECTED_KEY" ]] || exit 1
 [[ $(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$APP_PATH/Contents/Info.plist") == "$FEED_URL" ]] || exit 1
 NOTARY_AUTH_ARGS=(--keychain-profile "${NOTARY_PROFILE:-PortMenuNotary}")

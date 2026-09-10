@@ -4,23 +4,37 @@ Port Menu uses Sparkle. Updating GitHub source alone does not update an installe
 
 ## Normal workflow
 
-1. Finish app changes on a feature branch. Bitrig publishes commits; do not push manually from Bitrig.
-2. Merge the reviewed changes into `main`.
+1. Finish app changes on a feature branch and leave it selected. Bitrig publishes feature branches after the turn; it does not publish the default branch. Do not push manually from Bitrig.
+2. Verify the feature commit exists on GitHub, then merge its reviewed pull request into remote `main`. Do not substitute a local merge into `main`: Bitrig explicitly leaves those commits unpublished.
 3. GitHub Actions runs the tests, builds a universal Mac app, signs it with Developer ID, notarizes it with Apple, and creates a signed DMG and Sparkle feed.
 4. Actions uploads all assets to a draft GitHub release, then publishes them together. Failed validation or uploads never expose a partial update through the feed.
 5. Port Menu checks the fork feed hourly by default, verifies the signed feed and download, and downloads/installs updates using Sparkle. Users can change both update preferences in Settings or choose Check for Updates… immediately.
 
 Sparkle can install downloaded updates when Port Menu quits. It may ask to relaunch or request macOS authorization; automatic updates do not bypass OS authorization. Stopping/relaunching Port Menu does not stop the servers or simulators it monitors.
 
-The project version/build remains the starting point. The first public release advances the build number beyond the local bootstrap build, so the installed bootstrap build can receive it through Sparkle. If it is already published or behind the last release, Actions automatically advances the patch and build numbers in the release artifact. Deliberately higher versions are preserved. The release title and app Settings show the actual version/build; release notes identify the source commit. Actions does not commit generated versions back to the branch.
+The project version/build remains the starting point. The first public release advances the build number beyond the local bootstrap build, so the installed bootstrap build can receive it through Sparkle. If it is already published or behind the last release, Actions automatically advances the patch and build numbers in the release artifact. Deliberately higher versions are preserved. The release title and app Settings show only the release version, starting at 0.18.19; the internal build number still advances for Sparkle and macOS. Release notes identify the source commit. Actions does not commit generated versions back to the branch.
 
-## Activation status — 10 September 2026
+## Activation status — 11 September 2026
 
-Developer ID Application signing is now configured in this Mac's login Keychain: `Developer ID Application: Emad Alghamdi (D2WEKYD65B)`, certificate `F4GK7QPHN3`, expiring 11 September 2031. The existing Bitrig Apple API credential successfully authenticated to Apple's notarization service with its configured issuer. Keep that issuer: this verified credential is a team key, not an individual key.
+Developer ID signing is configured in this Mac's login Keychain: `Developer ID Application: Emad Alghamdi (D2WEKYD65B)`, certificate `F4GK7QPHN3`, expiring 11 September 2031. The existing Bitrig Apple credential authenticated and submitted accepted notarizations with its configured issuer. Keep that issuer: the configured credential is a team key.
 
-A local universal 0.8.17 (25) Developer ID archive/export passed strict signature verification, including nested Sparkle helpers, hardened runtime, secure timestamp, and absence of development debugging entitlements. It has not been submitted to Apple or published. The encrypted certificate export and existing fork Sparkle key are prepared in protected local storage. GitHub Actions credentials, Apple's artifact submission, and a published in-app update still require completion. Automatic approval review requested explicit destination/scope approval before uploading the credentials or app artifact. Bitrig's GitHub App credentials cannot manage Actions secrets (HTTP 403); use the owner's authenticated repository settings. No GitHub secret has been saved and no app has been submitted for notarization at this checkpoint. The workflow stops with a named missing-setting error until configured.
+All six encrypted repository secrets and both public variables below are saved in `kuricialm/port-menu` Actions settings. No private credential is stored in Git. The Mac retains the original signing keys in Keychain.
 
-In this repository's **Settings → Secrets and variables → Actions**, configure:
+[Port Menu 0.8.17 (26)](https://github.com/kuricialm/port-menu/releases/tag/v0.8.17) is the first published fork release, built from immutable main commit `0cd04d179520fdcc5481b4f01fc48ed92df47d12`. Apple accepted both the app and DMG; stapling, Gatekeeper, universal slices, and Sparkle signatures passed. The public feed was fetched and verified independently.
+
+The official Sparkle 2.9 CLI detected the update from the installed 0.8.17 (25), downloaded it from the public feed, verified it, installed 0.8.17 (26), and relaunched one app instance. A subsequent probe reported no newer update instead of a retrieval error. Onboarding and menu visibility were retained; automatic checks/install remain enabled with a 3,600-second interval. This exercises Sparkle's real replacement path, not the app's manual button or a timed hourly check.
+
+The initial hosted run failed workflow validation because `runner.temp` is unavailable in job-level environment expressions. The fix initializes these paths in a runner step and passes official Actionlint 1.7.12. An incompatible `lipo -verify_arch` invocation was also replaced with exact architecture-token checks. The complete corrected release script passed locally for the notarized 0.8.18 typography build and the final 0.18.19 build, including app/DMG notarization, stapling, Gatekeeper, and signed-feed validation. The corrected hosted run and its next public release remain to be observed after Bitrig publishes the main-branch merge; they are not reported as passed yet.
+
+The 0.18.19 source also rejects ordinary duplicate launches synchronously, before SwiftUI creates a menu scene. A live duplicate exited while the installed 0.8.18 stayed running alone; visibility remained true and no preferences changed. The final 0.18.19 update is reserved for the user’s manual Check for Updates test. See the [current release review](release-review-0.18.19.md).
+
+### Publication follow-up
+
+The next manual check still reported 0.8.17 because the new commits had not reached GitHub. Bitrig’s workspace notice explicitly says it does not publish a repository’s default branch. The prior local main merge therefore did not trigger a release. The tested commits are now on `publish-update`, preserving a branch Bitrig can publish. Verify remote publication and merge there before reporting the update available.
+
+Bitrig rewrote the app commit from `cbe93f341d7ad58f04711fee3780b8854e5804e7` to `801d0d8`; their complete Git trees are identical. The later `220ec4e` commit changes only release documentation. The prepared 0.18.19 app/DMG were rechecked: signatures, stapled tickets, Gatekeeper and universal architectures passed. This source equivalence permits publishing the already-notarized package once the corresponding source is actually on GitHub; it does not justify tagging older code as the release.
+
+Configured in this repository's **Settings → Secrets and variables → Actions**:
 
 | Kind | Name | Value |
 | --- | --- | --- |
@@ -43,7 +57,7 @@ The fork key was created with Sparkle 2.9's `generate_keys --account kuricialm.p
 0X1eQatxgbA81qc/hSYxzuVC/KfbQggxyF9uJthrBqw=
 ```
 
-Once you have a GitHub login that can manage repository secrets, export that specific account to a protected temporary file and use it as `SPARKLE_PRIVATE_KEY`. Do not generate a different key: already-installed fork builds will trust the key above. Keep an encrypted backup of the original key.
+The configured `SPARKLE_PRIVATE_KEY` contains this exact fork key. For recovery or a new runner setup, export that specific account to protected temporary storage. Do not generate a different key: already-installed fork builds will trust the key above. Keep an encrypted backup of the original key.
 
 The tools are in the **resolved build's** `SourcePackages/artifacts/sparkle/Sparkle/bin` directory. For example, after resolving dependencies into `/tmp/portmenu-packages`:
 
@@ -61,9 +75,9 @@ Both the workflow and release script reject a private key that does not match th
 
 ## First installation and identity
 
-The release feed is `https://github.com/kuricialm/port-menu/releases/latest/download/appcast.xml`. The checked-in `packaging/appcast.xml` is an empty reference template, not a live published feed. Before the first release exists, manual checks can report a feed/download error; no upstream fallback is used.
+The release feed is `https://github.com/kuricialm/port-menu/releases/latest/download/appcast.xml`. The feed is live and signed. The checked-in `packaging/appcast.xml` remains an empty reference template, not the published feed. The earlier retrieval error occurred before the first fork release was published; no upstream fallback is used.
 
-Install a build containing the fork channel once through Applications; 0.8.17 (25) is installed and its single-instance behavior has been verified on this Mac. Existing 0.8.14 and older builds still contain the upstream feed/key, so they cannot bootstrap the new fork channel automatically. Subsequent fork releases can update through Sparkle.
+Install a build containing the fork channel once through Applications. The bootstrap 0.8.17 (25) has been successfully upgraded through Sparkle to the notarized 0.8.17 (26). Existing 0.8.14 and older builds still contain the upstream feed/key, so they cannot bootstrap the new fork channel automatically. Subsequent fork releases can update through Sparkle.
 
 The bundle identifier `eduard.Porter` is deliberately retained for this existing installation so onboarding, launch-at-login identity, and other preferences remain associated with the same app. The fork replaces the upstream app at `/Applications/Port Menu.app`; simultaneous upstream/fork installation is not supported. The feed and EdDSA key are fork-owned, with signature checking required before extraction. Changing the bundle identifier later requires a separate migration.
 
@@ -89,4 +103,5 @@ If a failed upload leaves a draft for the same source SHA, the next run safely r
 
 - [Sparkle setup and distribution](https://sparkle-project.org/documentation/)
 - [Sparkle automatic update behavior](https://sparkle-project.org/documentation/customization/)
+- [Official Sparkle command-line update validation](https://sparkle-project.org/documentation/sparkle-cli/)
 - [GitHub Actions signing setup](https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications)

@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import Observation
 
 @MainActor
@@ -23,15 +24,31 @@ final class ApplicationInstanceController {
             return
         }
 
-        Task { @MainActor in
-            do {
-                let current = NSRunningApplication.current
-                let identifier = Bundle.main.bundleIdentifier ?? "eduard.Porter"
-                if let handoff = try InstallationHandoff.received(
-                    arguments: ProcessInfo.processInfo.arguments,
-                    destination: Bundle.main.bundleURL,
-                    currentPID: current.processIdentifier
-                ) {
+        let current = NSRunningApplication.current
+        let identifier = Bundle.main.bundleIdentifier ?? "eduard.Porter"
+        do {
+            let handoff = try InstallationHandoff.received(
+                arguments: ProcessInfo.processInfo.arguments,
+                destination: Bundle.main.bundleURL,
+                currentPID: current.processIdentifier
+            )
+            guard let handoff else {
+                // SwiftUI persists MenuBarExtra's insertion binding across
+                // processes. Reject duplicates before App.init returns, so a
+                // hidden duplicate cannot persist visibility=false for the
+                // already-running menu. Also insert the primary synchronously.
+                guard try claimPrimaryInstance(current: current, identifier: identifier) else {
+                    Darwin.exit(EXIT_SUCCESS)
+                }
+                Task { @MainActor in onReady() }
+                return
+            }
+
+            // The installer awaits NSWorkspace's launch callback before its
+            // source exits. Keep this handshake asynchronous so startup can
+            // finish and that callback can run without a parent/child deadlock.
+            Task { @MainActor in
+                do {
                     guard let source = NSRunningApplication(processIdentifier: handoff.parentPID),
                           source.bundleIdentifier == identifier, !source.isTerminated else {
                         throw InstallationHandoff.HandoffError.invalid
@@ -42,32 +59,40 @@ final class ApplicationInstanceController {
                         guard ContinuousClock.now < deadline else { throw InstallationHandoff.HandoffError.invalid }
                         try await Task.sleep(for: .milliseconds(50))
                     }
-                }
-
-                // This also catches an older installed release that predates
-                // the lock. Normal launches never terminate another app copy.
-                if let existing = existingInstance(before: current, identifier: identifier) {
-                    existing.activate()
+                    guard try claimPrimaryInstance(current: current, identifier: identifier) else {
+                        NSApp.terminate(nil)
+                        return
+                    }
+                    onReady()
+                } catch {
+                    Log.lifecycle.error("Cannot complete Port Menu installation handoff: \(error.localizedDescription)")
                     NSApp.terminate(nil)
-                    return
                 }
-                let directory = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-                    .appending(path: identifier, directoryHint: .isDirectory)
-                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                guard try instanceLock.acquire(at: directory.appending(path: "application.lock")) else {
-                    NSRunningApplication.runningApplications(withBundleIdentifier: identifier)
-                        .first { $0.processIdentifier != current.processIdentifier && !$0.isTerminated }?
-                        .activate()
-                    NSApp.terminate(nil)
-                    return
-                }
-                isPrimaryInstance = true
-                onReady()
-            } catch {
-                Log.lifecycle.error("Cannot start an additional Port Menu instance: \(error.localizedDescription)")
-                NSApp.terminate(nil)
             }
+        } catch {
+            Log.lifecycle.error("Cannot start Port Menu: \(error.localizedDescription)")
+            Darwin.exit(EXIT_FAILURE)
         }
+    }
+
+    private func claimPrimaryInstance(current: NSRunningApplication, identifier: String) throws -> Bool {
+        // This also catches an older installed release that predates the lock.
+        // Only the incoming duplicate exits; an existing app is never stopped.
+        if let existing = existingInstance(before: current, identifier: identifier) {
+            existing.activate()
+            return false
+        }
+        let directory = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appending(path: identifier, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        guard try instanceLock.acquire(at: directory.appending(path: "application.lock")) else {
+            NSRunningApplication.runningApplications(withBundleIdentifier: identifier)
+                .first { $0.processIdentifier != current.processIdentifier && !$0.isTerminated }?
+                .activate()
+            return false
+        }
+        isPrimaryInstance = true
+        return true
     }
 
     private func existingInstance(before current: NSRunningApplication, identifier: String) -> NSRunningApplication? {

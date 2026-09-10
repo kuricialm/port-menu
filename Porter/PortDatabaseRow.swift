@@ -8,9 +8,16 @@ struct PortDatabaseRow: View {
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "cylinder")
+                .font(.system(size: 10, weight: .medium))
+                .frame(width: 6, height: 6)
+                .offset(y: -1)
+                .accessibilityHidden(true)
+
             Text(entry.ownerLabel ?? entry.projectName)
-                .foregroundStyle(.secondary)
+                .font(.system(.body, weight: .medium))
+                .foregroundStyle(.primary)
                 .lineLimit(1)
 
             Text(":\(String(entry.port))")
@@ -31,7 +38,6 @@ struct PortDatabaseRow: View {
             .modifier(RowActionReveal(isVisible: isHovered || actionFocused || voiceOverEnabled))
         }
         .font(.caption)
-        .padding(.leading, 12)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .contextMenu {

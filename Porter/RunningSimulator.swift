@@ -4,6 +4,7 @@ struct RunningSimulator: Identifiable, Sendable {
     var udid: String
     var name: String
     var runtime: String
+    var deviceTypeIdentifier: String? = nil
     var deviceSetPath: String? = nil
     var dataPath: String? = nil
     var appNames: [String] = []
@@ -11,6 +12,22 @@ struct RunningSimulator: Identifiable, Sendable {
 
     var id: String { "\(deviceSetPath ?? "default")/\(udid)" }
     var isHostedByBitrig: Bool { deviceSetPath == Self.bitrigDeviceSet }
+
+    var deviceSymbolName: String {
+        let platform = runtime.lowercased()
+        if platform.hasPrefix("watchos") { return "applewatch" }
+        if platform.hasPrefix("tvos") { return "appletv" }
+        if platform.hasPrefix("visionos") || platform.hasPrefix("xros") { return "visionpro" }
+
+        for identity in [deviceTypeIdentifier, name].compactMap({ $0?.lowercased() }) {
+            if identity.contains("ipad") { return "ipad" }
+            if identity.contains("iphone") { return "iphone" }
+            if identity.contains("watch") { return "applewatch" }
+            if identity.contains("apple-tv") || identity.contains("apple tv") { return "appletv" }
+            if identity.contains("vision") { return "visionpro" }
+        }
+        return "display"
+    }
     var shutdownArguments: [String] {
         ["simctl"] + (deviceSetPath.map { ["--set", $0] } ?? []) + ["shutdown", udid]
     }
@@ -29,6 +46,7 @@ struct RunningSimulator: Identifiable, Sendable {
             let version = parts.dropFirst().joined(separator: ".")
             for device in devices where device.state == "Booted" && device.isAvailable != false {
                 result.append(RunningSimulator(udid: device.udid, name: device.name, runtime: platform + " " + version,
+                                               deviceTypeIdentifier: device.deviceTypeIdentifier,
                                                deviceSetPath: deviceSetPath, dataPath: device.dataPath))
             }
         }
@@ -143,6 +161,7 @@ struct RunningSimulator: Identifiable, Sendable {
     private struct Device: Decodable {
         var udid: String
         var name: String
+        var deviceTypeIdentifier: String?
         var state: String
         var isAvailable: Bool?
         var dataPath: String?
