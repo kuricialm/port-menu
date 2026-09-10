@@ -8,36 +8,29 @@ struct PortDatabaseRow: View {
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Image(systemName: "cylinder")
-                .font(.system(size: 10, weight: .medium))
-                .frame(width: 6, height: 6)
-                .offset(y: -1)
-                .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                ServiceRowTitle(title: entry.ownerLabel ?? entry.projectName, marker: .database)
+                Spacer(minLength: 0)
 
-            Text(entry.ownerLabel ?? entry.projectName)
-                .font(.system(.body, weight: .medium))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-
-            Text(":\(String(entry.port))")
-                .fontDesign(.monospaced)
-                .foregroundStyle(.tertiary)
-
-            if let start = entry.startTime {
-                UptimeText(start: start)
-                    .foregroundStyle(.tertiary)
+                RowActionButton(title: "Copy Database Address", systemImage: "doc.on.doc") {
+                    PortStore.copyToClipboard("localhost:\(entry.port)")
+                }
+                .focused($actionFocused)
+                .modifier(RowActionReveal(isVisible: isHovered || actionFocused || voiceOverEnabled))
             }
 
-            Spacer(minLength: 0)
-
-            RowActionButton(title: "Copy Database Address", systemImage: "doc.on.doc") {
-                PortStore.copyToClipboard("localhost:\(entry.port)")
+            HStack(spacing: 6) {
+                if let start = entry.startTime {
+                    UptimeText(start: start)
+                }
+                Text(":\(String(entry.port))")
+                    .fontDesign(.monospaced)
+                Spacer(minLength: 0)
             }
-            .focused($actionFocused)
-            .modifier(RowActionReveal(isVisible: isHovered || actionFocused || voiceOverEnabled))
+            .font(.caption)
+            .foregroundStyle(.tertiary)
         }
-        .font(.caption)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .contextMenu {

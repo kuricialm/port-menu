@@ -415,16 +415,8 @@ struct PortRow: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Circle()
-                        .fill(store.isStale ? Color.orange : Color.green)
-                        .frame(width: 6, height: 6)
-                        .offset(y: -1)
-                        .accessibilityHidden(true)
-
-                    Text(entry.projectName)
-                        .font(.system(.body, weight: .medium))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                    ServiceRowTitle(title: entry.projectName,
+                                    marker: .status(store.isStale ? .orange : .green))
 
                     if let ownerLabel = entry.ownerLabel {
                         Text(ownerLabel)

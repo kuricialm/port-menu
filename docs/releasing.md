@@ -2,6 +2,10 @@
 
 Port Menu uses Sparkle. Updating GitHub source alone does not update an installed app: a release must be compiled, signed, notarized, and published first. The workflow in `.github/workflows/release.yml` performs that work for app changes on `main`, and can also be started manually on `main`.
 
+## Local candidate awaiting user acceptance
+
+**0.18.20** is a local test candidate on `fix-row-proportions`. It shares the main/database title component, bounds the database icon to the same marker size, moves database metadata to a second line, and uses the filled-square simulator stop icon. The Bitrig build, three layout tests, rendered fixture review, and copied-app signature check passed. The user explicitly requested local testing before release: do not merge or publish this candidate until they approve it. The public release remains 0.18.19.
+
 ## Normal workflow
 
 1. Finish app changes on a feature branch and leave it selected. Bitrig publishes feature branches after the turn; it does not publish the default branch. Do not push manually from Bitrig.
