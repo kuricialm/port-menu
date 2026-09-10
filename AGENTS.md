@@ -7,3 +7,8 @@
 - LocalCan integration is read-only. Never create, rewrite, or remove saved routes.
 - Simulator discovery is read-only; shut down only the specific device selected by the user.
 - Bitrig manages publishing. Work on a feature branch, commit changes, and do not push manually.
+
+## Version identification
+
+- For every batch of app changes published by Bitrig, increment the patch component of `MARKETING_VERSION` and increment `CURRENT_PROJECT_VERSION` before the final build and commit. Keep Debug/Release and test targets consistent. Never reuse a version for a changed app build that the user will install. Documentation-only changes do not require an app release.
+- Show version and build in the app's Settings popover. Report the exact version in the handoff and distinguish a successful build from a verified installation in `/Applications/Port Menu.app`.
