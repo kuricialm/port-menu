@@ -4,7 +4,7 @@ Port Menu uses Sparkle. Updating GitHub source alone does not update an installe
 
 ## Local candidate awaiting user acceptance
 
-**0.18.20** is a local test candidate on `fix-row-proportions`. It shares the main/database title component, bounds the database icon to the same marker size, moves database metadata to a second line, and uses the filled-square simulator stop icon. The Bitrig build, three layout tests, rendered fixture review, and copied-app signature check passed. The user explicitly requested local testing before release: do not merge or publish this candidate until they approve it. The public release remains 0.18.19.
+**1.0.0** is the user-requested public version. Sparkle and the release workflow require a three-component version, so GitHub tags `v1.0.0` rather than `v1`. Grouped PostgreSQL captions match the `main` line, use `cylinder.split.1x2`, and share 6pt icon-to-text spacing with simulator captions. Merge this version into remote `main` after Bitrig publishes the feature branch. The last published release remains 0.18.19 until that merge completes.
 
 ## Normal workflow
 
