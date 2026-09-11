@@ -4,7 +4,7 @@ Port Menu uses Sparkle. Updating GitHub source alone does not update an installe
 
 ## Local candidate awaiting user acceptance
 
-**1.0.1** is the public version to ship (`v1.0.1`, build 32). `v1.0.0` is blocked by an old March git tag with no GitHub Release; the user chose 1.0.1 instead of deleting that tag. The 1.0.0 Actions run notarized successfully but did not publish. The last published release remains 0.18.19 until 1.0.1 is merged to remote `main`.
+**1.0.3** (build 34) is the next public version. Caption rows always show the globe, and ports without a git branch display `main` so they match stock. Merge into remote `main` to publish tag `v1.0.3`. The last published release is 1.0.2.
 
 ## Normal workflow
 

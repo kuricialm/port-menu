@@ -36,6 +36,19 @@ struct MenuLayoutTests {
         }
     }
 
+    @Test @MainActor func portRowWithoutBranchKeepsTheSameTwoLineHeight() {
+        let store = PortStore(scanner: FakePortScanner(ports: [], delay: 0))
+        let services = DevelopmentServices()
+        services.routes = [3100: [URL(string: "https://paperclip.local")!]]
+        let withBranch = ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-840))
+        let withoutBranch = ActivePort(port: 3100, pid: 99997, projectName: "node", branch: "", startTime: Date().addingTimeInterval(-3480))
+        let branched = NSHostingView(rootView: PortRow(entry: withBranch, showTopDivider: false)
+            .environment(store).environment(services).frame(width: 340))
+        let unbranched = NSHostingView(rootView: PortRow(entry: withoutBranch, showTopDivider: false)
+            .environment(store).environment(services).frame(width: 340))
+        #expect(abs(branched.fittingSize.height - unbranched.fittingSize.height) < 1)
+    }
+
     @Test @MainActor func portRowRetainsOriginalTwoLineHeight() {
         let store = PortStore(scanner: FakePortScanner(ports: [], delay: 0))
         let services = DevelopmentServices()

@@ -160,6 +160,15 @@ struct ActivePortTests {
         #expect(port.url.absoluteString == "http://localhost:3000")
         #expect(port.canOpenInBrowser)
         #expect(port.ownerLabel == nil)
+        #expect(port.captionBranch == "main")
+    }
+
+    @Test func emptyBranchUsesMainInTheCaption() {
+        let port = ActivePort(port: 3100, pid: 1, projectName: "node", branch: "", startTime: nil)
+        #expect(port.branch.isEmpty)
+        #expect(port.captionBranch == "main")
+        let feature = ActivePort(port: 3000, pid: 2, projectName: "app", branch: "feature/dark-mode", startTime: nil)
+        #expect(feature.captionBranch == "feature/dark-mode")
     }
 
     @Test func compositeIdentity() {

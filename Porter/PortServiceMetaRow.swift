@@ -9,9 +9,10 @@ struct PortServiceMetaRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
+            Image(systemName: symbolName)
+                .accessibilityHidden(true)
+
             if !title.isEmpty {
-                Image(systemName: symbolName)
-                    .accessibilityHidden(true)
                 Text(title)
                     .lineLimit(1)
                     .truncationMode(.middle)

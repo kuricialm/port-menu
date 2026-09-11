@@ -40,6 +40,11 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
         URL(string: "http://localhost:\(port)")!
     }
 
+    /// Caption text next to the globe. Empty git results use `main` so rows match.
+    var captionBranch: String {
+        branch.isEmpty ? "main" : branch
+    }
+
     init(port: UInt16, pid: Int32, projectName: String, branch: String, startTime: Date?,
          processIdentity: ProcessIdentity? = nil, owner: PortOwner = .server, projectRoot: URL? = nil) {
         if let processIdentity {

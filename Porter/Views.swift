@@ -526,7 +526,7 @@ struct PortRow: View {
 
                 PortServiceMetaRow(
                     symbolName: "network",
-                    title: entry.branch,
+                    title: entry.captionBranch,
                     startTime: entry.startTime,
                     port: entry.port
                 )
