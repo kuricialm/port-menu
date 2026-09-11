@@ -62,12 +62,7 @@ struct PortMainContentView: View {
                     let showPorts = inventory.showsPorts
                     let showSimulators = inventory.showsSimulators
                     if showPorts {
-                        Text("Ports")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 10)
-                            .padding(.bottom, 2)
+                        MenuSectionHeader("Ports")
                         if let error = store.lastError, store.entries.isEmpty {
                             PortErrorStateView(error: error)
                         } else {
@@ -102,6 +97,7 @@ struct PortMainContentView: View {
                         SimulatorSectionView()
                     }
                     if inventory.showsCombinedEmpty {
+                        MenuSectionHeader("Ports")
                         if store.isScanning {
                             PortScanningStateView()
                         } else {
@@ -135,6 +131,23 @@ struct PortMainContentView: View {
         )) {
             Button("OK") { services.actionError = nil; store.actionError = nil }
         } message: { Text(services.actionError ?? store.actionError ?? "") }
+    }
+}
+
+struct MenuSectionHeader: View {
+    var title: String
+
+    init(_ title: String) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.tertiary)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 2)
     }
 }
 
