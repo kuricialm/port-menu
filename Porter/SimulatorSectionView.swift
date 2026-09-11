@@ -16,11 +16,6 @@ struct SimulatorSectionView: View {
                 Text(error)
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.horizontal, 16).padding(.vertical, 8)
-            } else if services.simulators.isEmpty {
-                Text("No running simulators")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
             }
             ForEach(Array(services.simulators.enumerated()), id: \.element.id) { index, device in
                 if index > 0 { Divider().padding(.horizontal, 16) }

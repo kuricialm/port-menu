@@ -53,44 +53,66 @@ struct PortMainContentView: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Ports")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.tertiary)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 10)
-                        .padding(.bottom, 2)
-                    if let error = store.lastError, store.entries.isEmpty {
-                        PortErrorStateView(error: error)
-                    } else if store.entries.isEmpty && !store.isScanning {
-                        PortEmptyStateView()
-                    } else if store.entries.isEmpty {
-                        PortScanningStateView()
-                    } else {
-                        PortEntryListView()
-                    }
-                    if store.isStale, !store.entries.isEmpty {
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Image(systemName: "exclamationmark.triangle")
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Ports may be out of date")
-                                if let date = store.lastSuccessfulScan {
-                                    Text("Last scanned \(date.formatted(date: .omitted, time: .shortened))")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer(minLength: 0)
-                            Button("Retry") { store.refresh() }
-                                .buttonStyle(.plain)
+                    let inventory = MenuInventory(
+                        hasPorts: !store.entries.isEmpty,
+                        hasPortError: store.lastError != nil,
+                        hasSimulators: !services.simulators.isEmpty,
+                        hasSimulatorError: services.simulatorError != nil
+                    )
+                    let showPorts = inventory.showsPorts
+                    let showSimulators = inventory.showsSimulators
+                    if showPorts {
+                        Text("Ports")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 10)
+                            .padding(.bottom, 2)
+                        if let error = store.lastError, store.entries.isEmpty {
+                            PortErrorStateView(error: error)
+                        } else {
+                            PortEntryListView()
                         }
-                        .font(.caption).foregroundStyle(.orange)
-                        .padding(.horizontal, 16).padding(.vertical, 8)
-                        .help(store.lastError?.localizedDescription ?? "")
+                        if store.isStale, !store.entries.isEmpty {
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle")
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Ports may be out of date")
+                                    if let date = store.lastSuccessfulScan {
+                                        Text("Last scanned \(date.formatted(date: .omitted, time: .shortened))")
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                Spacer(minLength: 0)
+                                Button("Retry") { store.refresh() }
+                                    .buttonStyle(.plain)
+                            }
+                            .font(.caption).foregroundStyle(.orange)
+                            .padding(.horizontal, 16).padding(.vertical, 8)
+                            .help(store.lastError?.localizedDescription ?? "")
+                        }
+                        if let error = services.routeError {
+                            Text(error).font(.caption).foregroundStyle(.secondary).padding(16)
+                        }
                     }
-                    if let error = services.routeError {
-                        Text(error).font(.caption).foregroundStyle(.secondary).padding(16)
+                    if showPorts && showSimulators {
+                        Divider()
                     }
-                    Divider()
-                    SimulatorSectionView()
+                    if showSimulators {
+                        SimulatorSectionView()
+                    }
+                    if inventory.showsCombinedEmpty {
+                        if store.isScanning {
+                            PortScanningStateView()
+                        } else {
+                            Text("No running ports or simulators")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .accessibilityLabel("No running ports or simulators")
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
@@ -114,6 +136,17 @@ struct PortMainContentView: View {
             Button("OK") { services.actionError = nil; store.actionError = nil }
         } message: { Text(services.actionError ?? store.actionError ?? "") }
     }
+}
+
+struct MenuInventory {
+    var hasPorts: Bool
+    var hasPortError: Bool
+    var hasSimulators: Bool
+    var hasSimulatorError: Bool
+
+    var showsPorts: Bool { hasPorts || hasPortError }
+    var showsSimulators: Bool { hasSimulators || hasSimulatorError }
+    var showsCombinedEmpty: Bool { !showsPorts && !showsSimulators }
 }
 
 private struct MenuContentHeightKey: PreferenceKey {

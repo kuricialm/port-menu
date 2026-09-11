@@ -66,4 +66,21 @@ struct MenuLayoutTests {
         #expect(abs(grouped.fittingSize.height - plain.fittingSize.height
                     - databaseContent.fittingSize.height - 6) < 1)
     }
+
+    @Test func hidesEmptySectionsAndShowsCombinedCopy() {
+        let portsOnly = MenuInventory(hasPorts: true, hasPortError: false, hasSimulators: false, hasSimulatorError: false)
+        #expect(portsOnly.showsPorts)
+        #expect(!portsOnly.showsSimulators)
+        #expect(!portsOnly.showsCombinedEmpty)
+
+        let simulatorsOnly = MenuInventory(hasPorts: false, hasPortError: false, hasSimulators: true, hasSimulatorError: false)
+        #expect(!simulatorsOnly.showsPorts)
+        #expect(simulatorsOnly.showsSimulators)
+        #expect(!simulatorsOnly.showsCombinedEmpty)
+
+        let empty = MenuInventory(hasPorts: false, hasPortError: false, hasSimulators: false, hasSimulatorError: false)
+        #expect(empty.showsCombinedEmpty)
+        #expect(!empty.showsPorts)
+        #expect(!empty.showsSimulators)
+    }
 }
