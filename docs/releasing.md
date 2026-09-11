@@ -4,7 +4,7 @@ Port Menu uses Sparkle. Updating GitHub source alone does not update an installe
 
 ## Local candidate awaiting user acceptance
 
-**1.0.2** (build 33) is the approved public version. It drops shutdown simulators immediately, queues a follow-up scan, hides empty Ports/Simulators sections, and shows “No running ports or simulators” under the Ports heading when both are empty. Merge into remote `main` to publish tag `v1.0.2`. The last published release is 1.0.1.
+**1.0.3** (build 34) is the next public version. Caption rows always show the globe, and ports without a git branch display `main` so they match stock. Merge into remote `main` to publish tag `v1.0.3`. The last published release is 1.0.2.
 
 ## Normal workflow
 
