@@ -14,7 +14,7 @@ Show booted Apple Simulator devices across installed runtimes, including iOS, wa
 
 The menu-bar badge counts active port endpoints, including grouped databases, plus booted simulator devices (one count per device, regardless of how many apps run inside). It refreshes even while the menu is closed. Use the filled vertical power plug symbol beside the count (the horizontal plug on macOS 14). Its tooltip and accessibility label give the port/simulator breakdown. Use the network symbol before the Git branch in port metadata.
 
-Separate Ports and Simulators sections using the existing English language, typography, and controls. Keep the original 340-point menu width, size the menu height to its contents, cap the scroll area at 520 points, and retain the author’s two-line rows and animated hover reveal. Use compact SF Symbol actions with tooltips, preserving the capsule hover/press springs. Reveal actions for keyboard focus and VoiceOver as well as pointer hover.
+Separate Ports and Simulators sections using the existing English language, typography, and controls. Hide a section when it has no running items. When both are empty, keep the Ports section heading and show “No running ports or simulators” in that section’s body. Keep the original 340-point menu width, size the menu height to its contents, cap the scroll area at 520 points, and retain the author’s two-line rows and animated hover reveal. Use compact SF Symbol actions with tooltips, preserving the capsule hover/press springs. Reveal actions for keyboard focus and VoiceOver as well as pointer hover.
 
 ## Updates and installation
 

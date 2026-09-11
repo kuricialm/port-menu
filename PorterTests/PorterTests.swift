@@ -494,4 +494,33 @@ struct DevelopmentServicesTests {
         #expect(routes[3210]?.count == 2)
         #expect(routes[3000] == nil)
     }
+
+    @Test @MainActor
+    func queuedRefreshRunsAfterInFlightScan() async {
+        final class Gate: @unchecked Sendable {
+            var scans = 0
+            var finishFirst: CheckedContinuation<Void, Never>?
+        }
+        let gate = Gate()
+        let services = DevelopmentServices()
+        services.scanDevices = {
+            gate.scans += 1
+            if gate.scans == 1 {
+                await withCheckedContinuation { gate.finishFirst = $0 }
+            }
+            return RunningSimulator.Scan(devices: [], warning: nil)
+        }
+
+        let inflight = Task { await services.refresh() }
+        for _ in 0..<100_000 {
+            if gate.finishFirst != nil { break }
+            await Task.yield()
+        }
+        #expect(gate.finishFirst != nil)
+
+        await services.refresh()
+        gate.finishFirst?.resume()
+        await inflight.value
+        #expect(gate.scans == 2)
+    }
 }

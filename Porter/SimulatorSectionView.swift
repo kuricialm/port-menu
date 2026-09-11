@@ -6,21 +6,11 @@ struct SimulatorSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Simulators")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
-                .padding(.bottom, 2)
+            MenuSectionHeader("Simulators")
             if let error = services.simulatorError {
                 Text(error)
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.horizontal, 16).padding(.vertical, 8)
-            } else if services.simulators.isEmpty {
-                Text("No running simulators")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
             }
             ForEach(Array(services.simulators.enumerated()), id: \.element.id) { index, device in
                 if index > 0 { Divider().padding(.horizontal, 16) }

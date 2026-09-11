@@ -9,7 +9,9 @@ final class DevelopmentServices {
     var simulatorError: String?
     var actionError: String?
     var busy: Set<String> = []
+    var scanDevices: @Sendable () async -> RunningSimulator.Scan = { await RunningSimulator.scan() }
     private var isRefreshing = false
+    private var refreshAfterCurrentScan = false
 
     // The persistent menu-bar label owns this task so counts keep updating
     // when the popover is closed. The popover reads this same observable instance.
@@ -22,20 +24,26 @@ final class DevelopmentServices {
     }
 
     func refresh() async {
-        guard !isRefreshing else { return }
+        if isRefreshing {
+            refreshAfterCurrentScan = true
+            return
+        }
         isRefreshing = true
         defer { isRefreshing = false }
-        async let localRoutes = LocalCanRoutes.load()
-        async let devices = RunningSimulator.scan()
-        do {
-            let result = try await localRoutes
-            routes = result.routes
-            routeError = result.warnings.isEmpty ? nil : result.warnings.joined(separator: "\n")
-        }
-        catch { routes = [:]; routeError = "LocalCan routes unavailable: \(error.localizedDescription)" }
-        let scan = await devices
-        withAnimation(.smooth(duration: 0.25)) { simulators = scan.devices }
-        simulatorError = scan.warning
+        repeat {
+            refreshAfterCurrentScan = false
+            async let localRoutes = LocalCanRoutes.load()
+            async let devices = scanDevices()
+            do {
+                let result = try await localRoutes
+                routes = result.routes
+                routeError = result.warnings.isEmpty ? nil : result.warnings.joined(separator: "\n")
+            }
+            catch { routes = [:]; routeError = "LocalCan routes unavailable: \(error.localizedDescription)" }
+            let scan = await devices
+            withAnimation(.smooth(duration: 0.25)) { simulators = scan.devices }
+            simulatorError = scan.warning
+        } while refreshAfterCurrentScan
     }
 
     func perform(_ device: RunningSimulator, shutdown: Bool) {
@@ -46,6 +54,7 @@ final class DevelopmentServices {
                 let scanner = LivePortScanner()
                 if shutdown {
                     _ = try await scanner.runShell("/usr/bin/xcrun", args: device.shutdownArguments, timeout: 15)
+                    simulators.removeAll { $0.id == device.id }
                 } else if device.isHostedByBitrig {
                     // This device is embedded in Bitrig. Bring its host forward
                     // instead of trying to reopen it in Xcode's default device set.
@@ -58,7 +67,10 @@ final class DevelopmentServices {
                     _ = try await scanner.runShell("/usr/bin/open", args: arguments, timeout: 10)
                 }
                 await refresh()
-            } catch { actionError = error.localizedDescription }
+            } catch {
+                actionError = error.localizedDescription
+                await refresh()
+            }
         }
     }
 }
