@@ -14,12 +14,15 @@ struct PorterApp: App {
     @State private var instance = ApplicationInstanceController.shared
     private let updaterController: SPUStandardUpdaterController
     private let updaterDelegate = UpdaterDelegate()
+    private let updatePresentation: UpdatePresentation
 
     init() {
+        let presentation = UpdatePresentation()
+        updatePresentation = presentation
         updaterController = SPUStandardUpdaterController(
             startingUpdater: false,
             updaterDelegate: updaterDelegate,
-            userDriverDelegate: nil
+            userDriverDelegate: presentation
         )
         let updater = updaterController
         ApplicationInstanceController.shared.start {
@@ -33,6 +36,12 @@ struct PorterApp: App {
             PortListView(updater: updaterController.updater)
                 .environment(store)
                 .environment(services)
+                .environment(updatePresentation)
+                .background {
+                    UpdateMenuWindowReader(presentation: updatePresentation)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
         } label: {
             HStack(spacing: 3) {
                 Image(systemName: menuBarSymbol)
@@ -53,6 +62,7 @@ struct PorterApp: App {
         .commands {
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updater: updaterController.updater)
+                    .environment(updatePresentation)
             }
         }
     }

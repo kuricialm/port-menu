@@ -2,21 +2,6 @@ import ServiceManagement
 import Sparkle
 import SwiftUI
 
-// MARK: - Check for Updates
-
-struct CheckForUpdatesView: View {
-    let updater: SPUUpdater
-    @State private var canCheckForUpdates = false
-
-    var body: some View {
-        Button("Check for Updates…") {
-            updater.checkForUpdates()
-        }
-        .disabled(!canCheckForUpdates)
-        .onReceive(updater.publisher(for: \.canCheckForUpdates)) { canCheckForUpdates = $0 }
-    }
-}
-
 // MARK: - Port List
 
 struct PortListView: View {
