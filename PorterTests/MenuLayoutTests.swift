@@ -18,6 +18,7 @@ struct MenuLayoutTests {
         let view = PortMainContentView(updater: updater.updater)
             .environment(services)
             .environment(store)
+            .environment(UpdatePresentation())
             .frame(width: 340)
             .background(Color(nsColor: .windowBackgroundColor))
         let host = NSHostingView(rootView: view)

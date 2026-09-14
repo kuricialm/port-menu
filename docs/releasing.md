@@ -2,9 +2,13 @@
 
 Port Menu uses Sparkle. Updating GitHub source alone does not update an installed app: a release must be compiled, signed, notarized, and published first. The workflow in `.github/workflows/release.yml` performs that work for app changes on `main`, and can also be started manually on `main`.
 
-## Local candidate awaiting user acceptance
+## Latest release — 14 September 2026
 
-**1.0.3** (build 34) is the next public version. Caption rows always show the globe, and ports without a git branch display `main` so they match stock. Merge into remote `main` to publish tag `v1.0.3`. The last published release is 1.0.2.
+[Port Menu 1.0.4](https://github.com/kuricialm/port-menu/releases/tag/v1.0.4), build 35, is published. It resolves a usable full Xcode installation when macOS selects the standalone Command Line Tools, preserves that toolchain for simulator actions, and hides empty Ports and Simulators sections even when discovery fails.
+
+Bitrig published feature commit `4a9b58f1c122efc6a5413c7dfc906c0e6480aacd`; [pull request #8](https://github.com/kuricialm/port-menu/pull/8) merged it into remote main at `bc1b3d5f0ddb0587611545970a0106975d4f70a9`. [Release run 34868371997](https://github.com/kuricialm/port-menu/actions/runs/34868371997) passed testing, universal app building, Developer ID signing, app/DMG notarization, Sparkle signing, and publication. The release became public at 2026-09-14 16:27:27 UTC.
+
+The published DMG and appcast were downloaded independently and matched SHA256SUMS. The feed validated as 1.0.4 (35), with a fork-owned download URL; the public latest-feed endpoint returned the same appcast bytes. The live source diagnostic also discovered both default and Bitrig simulator collections without a developer-directory override. Publication is verified; this release turn did not install or relaunch the app, so installed-update acceptance remains separate.
 
 ## Normal workflow
 
