@@ -9,6 +9,7 @@ struct RunningSimulator: Identifiable, Sendable {
     var dataPath: String? = nil
     var appNames: [String] = []
     var startTime: Date? = nil
+    var toolchain: SimulatorToolchain? = nil
 
     var id: String { "\(deviceSetPath ?? "default")/\(udid)" }
     var isHostedByBitrig: Bool { deviceSetPath == Self.bitrigDeviceSet }
@@ -32,11 +33,23 @@ struct RunningSimulator: Identifiable, Sendable {
         ["simctl"] + (deviceSetPath.map { ["--set", $0] } ?? []) + ["shutdown", udid]
     }
 
+    func resolvedToolchain() async throws -> SimulatorToolchain {
+        if let toolchain { return toolchain }
+        return try await SimulatorToolchain.resolve()
+    }
+
+    func showArguments(using toolchain: SimulatorToolchain) -> [String] {
+        ["-a", toolchain.developerDirectory + "/Applications/Simulator.app", "--args"]
+            + (deviceSetPath.map { ["-DeviceSetPath", $0] } ?? [])
+            + ["-CurrentDeviceUDID", udid]
+    }
+
     static var bitrigDeviceSet: String {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Bitrig/Simulators").path
     }
 
-    static func decode(_ data: Data, deviceSetPath: String? = nil) throws -> [RunningSimulator] {
+    static func decode(_ data: Data, deviceSetPath: String? = nil,
+                       toolchain: SimulatorToolchain? = nil) throws -> [RunningSimulator] {
         let response = try JSONDecoder().decode(DeviceList.self, from: data)
         var result: [RunningSimulator] = []
         for (runtime, devices) in response.devices {
@@ -47,7 +60,8 @@ struct RunningSimulator: Identifiable, Sendable {
             for device in devices where device.state == "Booted" && device.isAvailable != false {
                 result.append(RunningSimulator(udid: device.udid, name: device.name, runtime: platform + " " + version,
                                                deviceTypeIdentifier: device.deviceTypeIdentifier,
-                                               deviceSetPath: deviceSetPath, dataPath: device.dataPath))
+                                               deviceSetPath: deviceSetPath, dataPath: device.dataPath,
+                                               toolchain: toolchain))
             }
         }
         return result.sorted { $0.name == $1.name ? $0.id < $1.id : $0.name < $1.name }
@@ -110,6 +124,13 @@ struct RunningSimulator: Identifiable, Sendable {
     static func scan() async -> Scan {
         let scanner = LivePortScanner()
         var warnings: [String] = []
+        let toolchain: SimulatorToolchain
+        do {
+            toolchain = try await SimulatorToolchain.resolve()
+        } catch {
+            Log.simulators.error("Simulator tool resolution failed: \(error.localizedDescription, privacy: .public)")
+            return Scan(devices: [], warning: error.localizedDescription)
+        }
         let processes: String
         let bootTimes: [String: Date]
         do {
@@ -121,6 +142,7 @@ struct RunningSimulator: Identifiable, Sendable {
         } catch {
             processes = ""
             bootTimes = [:]
+            Log.simulators.error("Simulator process discovery failed: \(error.localizedDescription, privacy: .public)")
             warnings.append("Running app names and simulator start times are unavailable.")
         }
         let defaultPath = FileManager.default.homeDirectoryForCurrentUser
@@ -133,11 +155,14 @@ struct RunningSimulator: Identifiable, Sendable {
         for path in sets {
             do {
                 let args = ["simctl"] + (path.map { ["--set", $0] } ?? []) + ["list", "devices", "booted", "--json"]
-                let json = try await scanner.runShell("/usr/bin/xcrun", args: args, timeout: 10)
-                devices += try decode(Data(json.utf8), deviceSetPath: path)
+                let json = try await toolchain.run(args, timeout: 10)
+                devices += try decode(Data(json.utf8), deviceSetPath: path, toolchain: toolchain)
             } catch {
-                let label = path == bitrigDeviceSet ? "Bitrig" : path == nil ? "Xcode" : "Custom"
-                warnings.append("\(label) simulator discovery unavailable.")
+                let set = path?.replacingOccurrences(of: NSHomeDirectory(), with: "~") ?? "default"
+                let detail = error.localizedDescription.replacingOccurrences(of: NSHomeDirectory(), with: "~")
+                Log.simulators.error("Simulator discovery failed for \(set, privacy: .public), developer directory \(toolchain.developerDirectory, privacy: .public): \(detail, privacy: .public)")
+                let warning = "Could not check all simulators."
+                if !warnings.contains(warning) { warnings.append(warning) }
             }
         }
         for index in devices.indices {

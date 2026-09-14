@@ -63,11 +63,7 @@ struct PortMainContentView: View {
                     let showSimulators = inventory.showsSimulators
                     if showPorts {
                         MenuSectionHeader("Ports")
-                        if let error = store.lastError, store.entries.isEmpty {
-                            PortErrorStateView(error: error)
-                        } else {
-                            PortEntryListView()
-                        }
+                        PortEntryListView()
                         if store.isStale, !store.entries.isEmpty {
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 Image(systemName: "exclamationmark.triangle")
@@ -97,7 +93,6 @@ struct PortMainContentView: View {
                         SimulatorSectionView()
                     }
                     if inventory.showsCombinedEmpty {
-                        MenuSectionHeader("Ports")
                         if store.isScanning {
                             PortScanningStateView()
                         } else {
@@ -157,8 +152,8 @@ struct MenuInventory {
     var hasSimulators: Bool
     var hasSimulatorError: Bool
 
-    var showsPorts: Bool { hasPorts || hasPortError }
-    var showsSimulators: Bool { hasSimulators || hasSimulatorError }
+    var showsPorts: Bool { hasPorts }
+    var showsSimulators: Bool { hasSimulators }
     var showsCombinedEmpty: Bool { !showsPorts && !showsSimulators }
 }
 

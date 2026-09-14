@@ -9,6 +9,7 @@ enum Log {
     static let ui = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Porter", category: "ui")
     static let lifecycle = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Porter", category: "lifecycle")
     static let shell = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Porter", category: "shell")
+    static let simulators = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Porter", category: "simulators")
 
     /// Enable verbose logging. Toggle via UserDefaults key "debugLogging".
     static var isVerbose: Bool {
