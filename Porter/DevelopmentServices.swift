@@ -53,18 +53,16 @@ final class DevelopmentServices {
             do {
                 let scanner = LivePortScanner()
                 if shutdown {
-                    _ = try await scanner.runShell("/usr/bin/xcrun", args: device.shutdownArguments, timeout: 15)
+                    let toolchain = try await device.resolvedToolchain()
+                    _ = try await toolchain.run(device.shutdownArguments, timeout: 15)
                     simulators.removeAll { $0.id == device.id }
                 } else if device.isHostedByBitrig {
                     // This device is embedded in Bitrig. Bring its host forward
                     // instead of trying to reopen it in Xcode's default device set.
                     _ = try await scanner.runShell("/usr/bin/open", args: ["-b", "app.bitrig.bitrigapp"], timeout: 10)
                 } else {
-                    let developer = try await scanner.runShell("/usr/bin/xcode-select", args: ["-p"], timeout: 5).trimmingCharacters(in: .whitespacesAndNewlines)
-                    let arguments = ["-a", developer + "/Applications/Simulator.app", "--args"]
-                        + (device.deviceSetPath.map { ["-DeviceSetPath", $0] } ?? [])
-                        + ["-CurrentDeviceUDID", device.udid]
-                    _ = try await scanner.runShell("/usr/bin/open", args: arguments, timeout: 10)
+                    let toolchain = try await device.resolvedToolchain()
+                    _ = try await scanner.runShell("/usr/bin/open", args: device.showArguments(using: toolchain), timeout: 10)
                 }
                 await refresh()
             } catch {

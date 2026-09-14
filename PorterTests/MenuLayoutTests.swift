@@ -80,20 +80,26 @@ struct MenuLayoutTests {
                     - databaseContent.fittingSize.height - 6) < 1)
     }
 
-    @Test func hidesEmptySectionsAndShowsCombinedCopy() {
-        let portsOnly = MenuInventory(hasPorts: true, hasPortError: false, hasSimulators: false, hasSimulatorError: false)
+    @Test(arguments: [false, true], [false, true])
+    func hidesEmptySectionsEvenWhenDiscoveryFails(hasPortError: Bool, hasSimulatorError: Bool) {
+        let portsOnly = MenuInventory(hasPorts: true, hasPortError: hasPortError, hasSimulators: false, hasSimulatorError: hasSimulatorError)
         #expect(portsOnly.showsPorts)
         #expect(!portsOnly.showsSimulators)
         #expect(!portsOnly.showsCombinedEmpty)
 
-        let simulatorsOnly = MenuInventory(hasPorts: false, hasPortError: false, hasSimulators: true, hasSimulatorError: false)
+        let simulatorsOnly = MenuInventory(hasPorts: false, hasPortError: hasPortError, hasSimulators: true, hasSimulatorError: hasSimulatorError)
         #expect(!simulatorsOnly.showsPorts)
         #expect(simulatorsOnly.showsSimulators)
         #expect(!simulatorsOnly.showsCombinedEmpty)
 
-        let empty = MenuInventory(hasPorts: false, hasPortError: false, hasSimulators: false, hasSimulatorError: false)
+        let empty = MenuInventory(hasPorts: false, hasPortError: hasPortError, hasSimulators: false, hasSimulatorError: hasSimulatorError)
         #expect(empty.showsCombinedEmpty)
         #expect(!empty.showsPorts)
         #expect(!empty.showsSimulators)
+
+        let populated = MenuInventory(hasPorts: true, hasPortError: hasPortError, hasSimulators: true, hasSimulatorError: hasSimulatorError)
+        #expect(populated.showsPorts)
+        #expect(populated.showsSimulators)
+        #expect(!populated.showsCombinedEmpty)
     }
 }
