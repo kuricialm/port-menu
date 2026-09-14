@@ -2,13 +2,13 @@
 
 Port Menu uses Sparkle. Updating GitHub source alone does not update an installed app: a release must be compiled, signed, notarized, and published first. The workflow in `.github/workflows/release.yml` performs that work for app changes on `main`, and can also be started manually on `main`.
 
-## Latest release — 14 September 2026
+## Latest release — 15 September 2026
 
-[Port Menu 1.0.4](https://github.com/kuricialm/port-menu/releases/tag/v1.0.4), build 35, is published. It resolves a usable full Xcode installation when macOS selects the standalone Command Line Tools, preserves that toolchain for simulator actions, and hides empty Ports and Simulators sections even when discovery fails.
+[Port Menu 1.0.5](https://github.com/kuricialm/port-menu/releases/tag/v1.0.5), build 36, is published. Manual update checks dismiss the menu-bar panel and Settings popover before handing focus to Sparkle, including existing update windows. Modal results dismiss a reopened panel, and the update button distinguishes busy sessions from updates that can be shown.
 
-Bitrig published feature commit `4a9b58f1c122efc6a5413c7dfc906c0e6480aacd`; [pull request #8](https://github.com/kuricialm/port-menu/pull/8) merged it into remote main at `bc1b3d5f0ddb0587611545970a0106975d4f70a9`. [Release run 34868371997](https://github.com/kuricialm/port-menu/actions/runs/34868371997) passed testing, universal app building, Developer ID signing, app/DMG notarization, Sparkle signing, and publication. The release became public at 2026-09-14 16:27:27 UTC.
+Bitrig published feature commit `4eaa3b1c443b97728ea7573aa627b2c9d1a696d9`; [pull request #9](https://github.com/kuricialm/port-menu/pull/9) merged it into remote main at `3e1ea1b4054fd29b98bec48f2c17e54ed58c595b`. [Release run 34905293030](https://github.com/kuricialm/port-menu/actions/runs/34905293030) passed testing, universal app building, Developer ID signing, app/DMG notarization, Sparkle signing, and publication. The release became public at 2026-09-14 22:44:06 UTC (15 September in Riyadh).
 
-The published DMG and appcast were downloaded independently and matched SHA256SUMS. The feed validated as 1.0.4 (35), with a fork-owned download URL; the public latest-feed endpoint returned the same appcast bytes. The live source diagnostic also discovered both default and Bitrig simulator collections without a developer-directory override. Publication is verified; this release turn did not install or relaunch the app, so installed-update acceptance remains separate.
+The published DMG and appcast were downloaded independently and matched SHA256SUMS. The feed validated as 1.0.5 (36), with a fork-owned download URL; the public latest-feed endpoint returned the same appcast bytes. Publication is verified. This release turn did not install or relaunch the app; confirmation that the intermittent manual-check issue is resolved in the installed app remains pending.
 
 ## Normal workflow
 
