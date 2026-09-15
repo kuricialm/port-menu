@@ -21,6 +21,9 @@ struct LsofParserTests {
         #expect(parsed[0].port == 3000)
         #expect(parsed[0].pid == 12345)
         #expect(parsed[0].processName == "node")
+        #expect(parsed[0].listeningHost == "127.0.0.1")
+        #expect(parsed[1].listeningHost == "[::1]")
+        #expect(parsed[2].listeningHost == "127.0.0.1")
         #expect(parsed[1].port == 5173)
         #expect(parsed[1].pid == 34567)
         #expect(parsed[1].processName == "java")
@@ -161,6 +164,21 @@ struct ActivePortTests {
         #expect(port.canOpenInBrowser)
         #expect(port.ownerLabel == nil)
         #expect(port.captionBranch == "main")
+    }
+
+    @Test func preservesListenerAddressesForDisplayAndOpening() {
+        for (host, address) in [("127.0.0.1", "127.0.0.1:3220"),
+                                ("192.168.1.5", "192.168.1.5:3220"),
+                                ("[::1]", "[::1]:3220"),
+                                ("0.0.0.0", "127.0.0.1:3220"),
+                                ("[::]", "[::1]:3220")] {
+            let port = ActivePort(port: 3220, pid: 123, projectName: "stock",
+                                  branch: "main", startTime: nil, listeningHost: host)
+            #expect(port.addressLabel(route: nil) == address)
+            #expect(port.url.absoluteString == "http://" + address)
+            #expect(port.addressLabel(route: URL(string: "https://stock.local")) == "stock.local")
+            #expect(port.addressLabel(route: URL(string: "https://stock.local:8443")) == "stock.local:8443")
+        }
     }
 
     @Test func emptyBranchUsesMainInTheCaption() {

@@ -9,6 +9,7 @@ struct MenuLayoutTests {
         let store = PortStore(scanner: FakePortScanner(ports: [], delay: 0))
         store.entries = [
             ActivePort(port: 3210, pid: 99999, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-840), projectRoot: URL(filePath: "/work/stock")),
+            ActivePort(port: 3220, pid: 99996, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-960), listeningHost: "127.0.0.1"),
             ActivePort(port: 55432, pid: 99998, projectName: "stock", branch: "main", startTime: Date().addingTimeInterval(-493_200), owner: .database(.postgreSQL), projectRoot: URL(filePath: "/work/stock"))
         ]
         let services = DevelopmentServices()

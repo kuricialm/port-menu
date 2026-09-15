@@ -88,6 +88,7 @@ struct LivePortScanner: PortScanning {
         let port: UInt16
         let pid: Int32
         let processName: String
+        var listeningHost: String = "localhost"
     }
 
     static func parseLsofOutput(_ output: String) -> [ParsedPort] {
@@ -112,7 +113,10 @@ struct LivePortScanner: PortScanning {
             guard port > 0 else { continue }
 
             guard seen.insert(port).inserted else { continue }
-            results.append(ParsedPort(port: port, pid: pid, processName: processName))
+            let host = String(nameCol[..<colonIdx])
+            let listeningHost = host == "*" ? (cols[4] == "IPv6" ? "[::1]" : "127.0.0.1") : host
+            results.append(ParsedPort(port: port, pid: pid, processName: processName,
+                                      listeningHost: listeningHost))
         }
 
         return results.sorted { $0.port < $1.port }
@@ -243,7 +247,8 @@ struct LivePortScanner: PortScanning {
                 startTime: processes[info.pid]?.identity.startTime ?? startTimes[info.pid],
                 processIdentity: processes[info.pid]?.identity,
                 owner: Self.owner(processName: info.processName, kernelName: processes[info.pid]?.name),
-                projectRoot: gitRoot
+                projectRoot: gitRoot,
+                listeningHost: info.listeningHost
             )
         }
     }

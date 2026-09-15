@@ -449,20 +449,20 @@ struct PortRow: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
-                    } else if let url = services.routes[entry.port]?.first {
-                        Text(url.host() ?? url.absoluteString)
+                    } else {
+                        Text(entry.addressLabel(route: services.routes[entry.port]?.first))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
-                            .help(url.absoluteString)
+                            .help((services.routes[entry.port]?.first ?? entry.url).absoluteString)
                     }
                     Spacer(minLength: 0)
 
                     HStack(spacing: 2) {
                         if !entry.canOpenInBrowser {
                             RowActionButton(title: "Copy Address", systemImage: "doc.on.doc") {
-                                PortStore.copyToClipboard("localhost:\(entry.port)")
+                                PortStore.copyToClipboard(entry.localAddress)
                             }
                         } else {
                             RowActionButton(title: "Kill Server", systemImage: "stop.fill", destructive: true) {
@@ -495,7 +495,7 @@ struct PortRow: View {
                                     .help("Open LocalCan")
                                 }
                             }
-                            RowActionButton(title: "Open localhost", systemImage: "arrow.up.forward.square") {
+                            RowActionButton(title: "Open " + entry.localAddress, systemImage: "arrow.up.forward.square") {
                                 NSWorkspace.shared.open(entry.url)
                             }
                         }
@@ -529,11 +529,11 @@ struct PortRow: View {
                 ForEach(services.routes[entry.port] ?? [], id: \.self) { url in
                     Button("Copy " + url.absoluteString) { PortStore.copyToClipboard(url.absoluteString) }
                 }
-                Button("Copy localhost URL") {
+                Button("Copy Local URL") {
                     PortStore.copyToClipboard(entry.url.absoluteString)
                 }
             } else {
-                Button("Copy Address") { PortStore.copyToClipboard("localhost:\(entry.port)") }
+                Button("Copy Address") { PortStore.copyToClipboard(entry.localAddress) }
             }
             Button("Copy Port") { PortStore.copyToClipboard(String(entry.port)) }
             if entry.canOpenInBrowser {

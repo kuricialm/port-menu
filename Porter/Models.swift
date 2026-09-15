@@ -12,6 +12,7 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
     let startTime: Date?
     let processIdentity: ProcessIdentity?
     let owner: PortOwner
+    var listeningHost: String
 
     var terminationRestriction: String? {
         if owner == .sharedDocker {
@@ -36,8 +37,25 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
         return nil
     }
 
+    /// Wildcard listeners accept local connections; concrete addresses stay exact.
+    var localAddress: String {
+        let host: String
+        switch listeningHost {
+        case "*", "0.0.0.0": host = "127.0.0.1"
+        case "::", "[::]": host = "[::1]"
+        default: host = listeningHost.contains(":") && !listeningHost.hasPrefix("[")
+            ? "[\(listeningHost)]" : listeningHost
+        }
+        return "\(host):\(port)"
+    }
+
     var url: URL {
-        URL(string: "http://localhost:\(port)")!
+        URL(string: "http://\(localAddress)")!
+    }
+
+    func addressLabel(route: URL?) -> String {
+        guard let route, let host = route.host() else { return localAddress }
+        return route.port.map { "\(host):\($0)" } ?? host
     }
 
     /// Caption text next to the globe. Empty git results use `main` so rows match.
@@ -46,7 +64,8 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
     }
 
     init(port: UInt16, pid: Int32, projectName: String, branch: String, startTime: Date?,
-         processIdentity: ProcessIdentity? = nil, owner: PortOwner = .server, projectRoot: URL? = nil) {
+         processIdentity: ProcessIdentity? = nil, owner: PortOwner = .server, projectRoot: URL? = nil,
+         listeningHost: String = "localhost") {
         if let processIdentity {
             self.id = "\(port)-\(pid)-\(processIdentity.startSeconds)-\(processIdentity.startMicroseconds)"
         } else {
@@ -59,6 +78,7 @@ struct ActivePort: Identifiable, Equatable, Hashable, Sendable {
         self.branch = branch
         self.startTime = startTime
         self.processIdentity = processIdentity
+        self.listeningHost = listeningHost
         self.owner = owner
     }
 }
