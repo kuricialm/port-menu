@@ -16,7 +16,7 @@ struct PortDatabaseRow: View {
         )
         .overlay(alignment: .trailing) {
             RowActionButton(title: "Copy Database Address", systemImage: "doc.on.doc") {
-                PortStore.copyToClipboard("localhost:\(entry.port)")
+                PortStore.copyToClipboard(entry.localAddress)
             }
             .focused($actionFocused)
             .modifier(RowActionReveal(isVisible: isHovered || actionFocused || voiceOverEnabled))
@@ -24,7 +24,7 @@ struct PortDatabaseRow: View {
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .contextMenu {
-            Button("Copy Address") { PortStore.copyToClipboard("localhost:\(entry.port)") }
+            Button("Copy Address") { PortStore.copyToClipboard(entry.localAddress) }
             Button("Copy Port") { PortStore.copyToClipboard(String(entry.port)) }
         }
         .accessibilityElement(children: .combine)
