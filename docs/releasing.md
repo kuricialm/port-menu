@@ -4,11 +4,11 @@ Port Menu uses Sparkle. Updating GitHub source alone does not update an installe
 
 ## Latest release — 15 September 2026
 
-[Port Menu 1.0.5](https://github.com/kuricialm/port-menu/releases/tag/v1.0.5), build 36, is published. Manual update checks dismiss the menu-bar panel and Settings popover before handing focus to Sparkle, including existing update windows. Modal results dismiss a reopened panel, and the update button distinguishes busy sessions from updates that can be shown.
+[Port Menu 1.0.6](https://github.com/kuricialm/port-menu/releases/tag/v1.0.6), build 37, is published. Servers without a saved LocalCan domain show the detected address and port beside their project name. Open and Copy use the same address, preserving concrete IPv4/IPv6 addresses and using the corresponding loopback address for wildcard listeners.
 
-Bitrig published feature commit `4eaa3b1c443b97728ea7573aa627b2c9d1a696d9`; [pull request #9](https://github.com/kuricialm/port-menu/pull/9) merged it into remote main at `3e1ea1b4054fd29b98bec48f2c17e54ed58c595b`. [Release run 34905293030](https://github.com/kuricialm/port-menu/actions/runs/34905293030) passed testing, universal app building, Developer ID signing, app/DMG notarization, Sparkle signing, and publication. The release became public at 2026-09-14 22:44:06 UTC (15 September in Riyadh).
+Bitrig published feature commit `8778d58b921d2fbb65a7c0f62e4c522db73316ed`; [pull request #10](https://github.com/kuricialm/port-menu/pull/10) merged it into remote main at `4593435f9d5e61a202bc3397c99f47680365dffa`. [Release run 34963975286](https://github.com/kuricialm/port-menu/actions/runs/34963975286) passed testing, universal app building, Developer ID signing, app/DMG notarization, Sparkle signing, and publication. The release became public at 2026-09-15 11:37:16 UTC.
 
-The published DMG and appcast were downloaded independently and matched SHA256SUMS. The feed validated as 1.0.5 (36), with a fork-owned download URL; the public latest-feed endpoint returned the same appcast bytes. Publication is verified. This release turn did not install or relaunch the app; confirmation that the intermittent manual-check issue is resolved in the installed app remains pending.
+The published DMG and appcast were downloaded independently and matched SHA256SUMS. The feed validated as 1.0.6 (37), with a fork-owned download URL; the public latest-feed endpoint returned the same appcast bytes. Publication is verified. This release turn did not install or relaunch the app; installation in `/Applications/Port Menu.app` remains unverified.
 
 ## Normal workflow
 
